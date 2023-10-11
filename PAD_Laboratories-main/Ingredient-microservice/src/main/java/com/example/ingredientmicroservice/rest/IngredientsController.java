@@ -3,6 +3,8 @@ package com.example.ingredientmicroservice.rest;
 import com.example.ingredientmicroservice.service.IngredientServiceImpl;
 import com.example.ingredientmicroservice.domain.Ingredients;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.actuate.health.Health;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
@@ -11,6 +13,18 @@ import java.util.List;
 @RestController
 public class IngredientsController {
     RestTemplate restTemplate = new RestTemplate();
+    HealthIndicator healthIndicator = new HealthIndicator() {
+        @Override
+        public Health health() {
+            return Health.up().build();
+        }
+    };
+
+    @GetMapping("/status")
+    public String getStatus(){
+        Health health = healthIndicator.health();
+        return "Service status: " + health.getStatus();
+    }
 
     @Value("${http://localhost:8081}")
     private String recipeServiceBaseUrl;

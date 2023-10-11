@@ -4,6 +4,8 @@ import com.example.recipemicroservice.domain.Recipes;
 import com.example.recipemicroservice.service.RecipeService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.actuate.health.Health;
 
 import java.util.List;
 
@@ -12,6 +14,19 @@ public class RecipeController {
    Recipes recipe = new Recipes();
 
     private final RecipeService recipeService;
+
+    HealthIndicator healthIndicator = new HealthIndicator() {
+        @Override
+        public Health health() {
+            return Health.up().build();
+        }
+    };
+
+    @GetMapping("/status")
+    public String getStatus(){
+        Health health = healthIndicator.health();
+        return "Service status: " + health.getStatus();
+    }
 
     public RecipeController(RecipeService recipeService) {
         this.recipeService = recipeService;
