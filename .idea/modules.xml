@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/PAD_Laboratories-main/Ingredient-microservice/Ingredient-microservice.iml" filepath="$PROJECT_DIR$/PAD_Laboratories-main/Ingredient-microservice/Ingredient-microservice.iml" />
+      <module fileurl="file://$PROJECT_DIR$/PAD_Laboratories_secondary/Ingredient-microservice/Ingredient-microservice (1).iml" filepath="$PROJECT_DIR$/PAD_Laboratories_secondary/Ingredient-microservice/Ingredient-microservice (1).iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/PAD_Laboratories.iml" filepath="$PROJECT_DIR$/.idea/PAD_Laboratories.iml" />
+    </modules>
+  </component>
+</project>

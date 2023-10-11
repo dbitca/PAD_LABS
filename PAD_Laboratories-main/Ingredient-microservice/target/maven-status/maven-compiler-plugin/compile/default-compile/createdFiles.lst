@@ -1,0 +1,5 @@
+com\example\ingredientmicroservice\IngredientsController.class
+com\example\ingredientmicroservice\Ingredient_entity.class
+com\example\ingredientmicroservice\IngredientRepository.class
+com\example\ingredientmicroservice\IngredientServiceImpl.class
+com\example\ingredientmicroservice\IngredientMicroserviceApplication.class
