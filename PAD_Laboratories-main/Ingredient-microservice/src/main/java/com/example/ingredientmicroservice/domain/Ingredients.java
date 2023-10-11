@@ -8,7 +8,7 @@ import lombok.*;
 
 @Data
 @Entity
-@Table(name = "recipes")
+@Table(name = "ingredients")
 @NoArgsConstructor
 @AllArgsConstructor
 public class Ingredients {
