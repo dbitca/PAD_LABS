@@ -47,23 +47,11 @@ public class IngredientServiceImpl{
         return CompletableFuture.completedFuture(ingredients);
     }
 
-//   public CompletableFuture<List<Ingredients>> saveIngredients(MultipartFile file) throws Exception {
-//        long start = System.currentTimeMillis();
-//        List<Ingredients> ingredients = parseCSVFile(file);
-//        logger.info("saving a list of ingredients of size{}", ingredients.size(), "", Thread.currentThread().getId());
-//        ingredients = ingredientRepository.saveAll(ingredients);
-//        long end = System.currentTimeMillis();
-//        logger.info("Total time {}", (end-start));
-//        return CompletableFuture.completedFuture(ingredients);
-//   }
 
     public Ingredients saveIngredient(Ingredients ingredient){
        return ingredientRepository.save(ingredient);
     }
 
-//    public List<Ingredients> saveIngredients(List<Ingredients> ingredients){
-//        return ingredientRepository.saveAll(ingredients);
-//    }
 
     public List<Ingredients> getIngredients(){
         return ingredientRepository.findAll();

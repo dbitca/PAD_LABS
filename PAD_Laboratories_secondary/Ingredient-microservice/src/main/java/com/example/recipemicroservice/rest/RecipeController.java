@@ -2,10 +2,16 @@ package com.example.recipemicroservice.rest;
 
 import com.example.recipemicroservice.domain.Recipes;
 import com.example.recipemicroservice.service.RecipeService;
+import org.apache.coyote.Response;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.boot.actuate.health.Health;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
+
 
 import java.util.List;
 
@@ -38,9 +44,12 @@ public class RecipeController {
         return "Received message: " + message;
     }
 
-    @PostMapping("/addRecipe")
-    public Recipes saveRecipe (@RequestBody Recipes recipe){
-        return recipeService.saveRecipe(recipe);
+    @PostMapping(value = "/addRecipes", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE}, produces = "application/json")
+    public ResponseEntity saveUsers (@RequestParam(value = "files")  MultipartFile[] files) throws Exception{
+        for (MultipartFile file : files){
+            recipeService.saveRecipes(file);
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @GetMapping("/recipe/{recipeId}")
@@ -57,40 +66,6 @@ public class RecipeController {
         return recipeService.findRecipesByIngredient(ingredient);
     }
 
-//    @GetMapping("/ingredient/{id}")
-//    public Recipes findIngredientById(@PathVariable Long id){
-//        String url = "http://localhost:9191/ingredient/" + id;
-//        return restTemplate.getForObject(url, Recipes.class);
-//    }
-
-//
-
-//    public IngredientsController(IngredientServiceImpl ingredientsService) {
-//        this.ingredientsService = ingredientsService;
-//    }
-//
-
-//
-//    @PostMapping("/addIngredients")
-//    public List<Ingredients> addIngredients(@RequestBody List<Ingredients> ingredientEntities){
-//        return ingredientsService.saveIngredients(ingredientEntities);
-//    }
-//
-
-//    @GetMapping("/ingredient/{id}")
-//    public Ingredients findIngredientById(@PathVariable Long id){
-//        return ingredientsService.getIngredientById(id);
-//    }
-//
-//    @PutMapping("/update")
-//    public Ingredients updateIngredient(@RequestBody Ingredients ingredientEntity){
-//        return ingredientsService.updateIngredient(ingredientEntity);
-//    }
-//
-//    @DeleteMapping("/delete/{id}")
-//    public String deleteIngredient(@PathVariable Long id){
-//        return ingredientsService.deleteIngredient(id);
-//    }
 }
 
 
