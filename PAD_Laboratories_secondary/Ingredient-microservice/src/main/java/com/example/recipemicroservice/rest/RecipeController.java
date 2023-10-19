@@ -44,14 +44,10 @@ public class RecipeController {
         return "Received message: " + message;
     }
 
-    @PostMapping(value = "/addRecipes", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE}, produces = "application/json")
-    public ResponseEntity saveUsers (@RequestParam(value = "files")  MultipartFile[] files) throws Exception{
-        for (MultipartFile file : files){
-            recipeService.saveRecipes(file);
-        }
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+    @PostMapping(value = "/addRecipe", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE}, produces = "application/json")
+    public Recipes saveRecipe(@RequestBody Recipes recipe){
+        return recipeService.saveRecipe(recipe);
     }
-
     @GetMapping("/recipe/{recipeId}")
     public Recipes findRecipeById(@PathVariable Long recipeId){
         return recipeService.getRecipeById(recipeId);

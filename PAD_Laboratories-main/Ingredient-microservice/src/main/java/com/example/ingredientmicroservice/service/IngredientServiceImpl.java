@@ -30,23 +30,26 @@ public class IngredientServiceImpl{
         this.ingredientRepository = ingredientRepository;
     }
 
-    public CompletableFuture<CompletableFuture<List<Ingredients>>> saveIngredients(MultipartFile file, long timeoutInSeconds) throws Exception {
-        return executeWithTimeout(() -> {
-            try {
-                return CompletableFuture.completedFuture(parseAndSaveIngredients(file));
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }, timeoutInSeconds);
-    }
+//    public CompletableFuture<CompletableFuture<List<Ingredients>>> saveIngredients(MultipartFile file, long timeoutInSeconds) throws Exception {
+//        return executeWithTimeout(() -> {
+//            try {
+//                return CompletableFuture.completedFuture(parseAndSaveIngredients(file));
+//            } catch (Exception e) {
+//                throw new RuntimeException(e);
+//            }
+//        }, timeoutInSeconds);
+//    }
+//
+//    private CompletableFuture<List<Ingredients>> parseAndSaveIngredients(MultipartFile file) throws Exception {
+//        List<Ingredients> ingredients = parseCSVFile(file);
+//        logger.info("saving a list of ingredients of size {}", ingredients.size());
+//        ingredients = ingredientRepository.saveAll(ingredients);
+//        return CompletableFuture.completedFuture(ingredients);
+//    }
 
-    private CompletableFuture<List<Ingredients>> parseAndSaveIngredients(MultipartFile file) throws Exception {
-        List<Ingredients> ingredients = parseCSVFile(file);
-        logger.info("saving a list of ingredients of size {}", ingredients.size());
-        ingredients = ingredientRepository.saveAll(ingredients);
-        return CompletableFuture.completedFuture(ingredients);
+        public List<Ingredients> saveIngredients(List<Ingredients> ingredients){
+        return ingredientRepository.saveAll(ingredients);
     }
-
 
     public Ingredients saveIngredient(Ingredients ingredient){
        return ingredientRepository.save(ingredient);

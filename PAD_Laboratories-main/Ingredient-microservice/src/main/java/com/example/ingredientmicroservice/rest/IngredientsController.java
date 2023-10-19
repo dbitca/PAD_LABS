@@ -52,8 +52,8 @@ public class IngredientsController {
 
     @PostMapping("/addIngredient")
     public Ingredients addIngredient(@RequestBody Ingredients ingredientEntity){
-        String message = "Ingredient " + ingredientEntity.getIngredient() + " is now available for use.";
-        restTemplate.postForObject("http://localhost:8081/notify", message, String.class);
+//        String message = "Ingredient " + ingredientEntity.getIngredient() + " is now available for use.";
+//        restTemplate.postForObject("http://localhost:8081/notify", message, String.class);
         return ingredientsService.saveIngredient(ingredientEntity);
     }
 
@@ -61,39 +61,45 @@ public class IngredientsController {
     @Qualifier("taskExecutor")
     private ThreadPoolTaskExecutor taskExecutor;
 
-    @PostMapping(value = "/addIngredients", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE}, produces = "application" +
-            "/json")
-    public ResponseEntity addIngredients(@RequestParam(value = "files") MultipartFile[] files) throws Exception {
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
-
-        for (MultipartFile file : files) {
-            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-                try {
-
-                    long threadId = Thread.currentThread().getId();
-                    String threadName = Thread.currentThread().getName();
-
-                    logger.info("Processing started for file: {} on thread ID: {} (Thread Name: {})",
-                            file.getOriginalFilename(), threadId, threadName);
-
-                    ingredientsService.saveIngredients(file, 1);
-
-                    logger.info("Processing completed for file: {} on thread ID: {} (Thread Name: {})",
-                            file.getOriginalFilename(), threadId, threadName);
-                } catch (Exception e) {
-                    logger.error("Error processing file: " + file.getOriginalFilename() + " on thread ID: " + Thread.currentThread().getId() + " (Thread Name: " + Thread.currentThread().getName() + ")", e);
-                }
-            }, taskExecutor);
-
-            futures.add(future);
-        }
-
-        CompletableFuture<Void>[] futuresArray = futures.toArray(new CompletableFuture[0]);
-        CompletableFuture<Void> allOf = CompletableFuture.allOf(futuresArray);
-        allOf.join();
-
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+    @PostMapping("/addIngredients")
+    public List<Ingredients> addIngredients(@RequestBody List<Ingredients> ingredientEntities) {
+        return ingredientsService.saveIngredients(ingredientEntities);
     }
+
+//    @PostMapping(value = "/addIngredients", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE}, produces = "application" +
+//            "/json")
+//    public ResponseEntity addIngredients(@RequestParam(value = "files") MultipartFile[] files) throws Exception {
+//        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+//        for (MultipartFile file : files) {
+//            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+//                try {
+//
+//                    long threadId = Thread.currentThread().getId();
+//                    String threadName = Thread.currentThread().getName();
+//
+//                    logger.info("Processing started for file: {} on thread ID: {} (Thread Name: {})",
+//                            file.getOriginalFilename(), threadId, threadName);
+//
+//                    ingredientsService.saveIngredients(file, 1);
+//
+//                    logger.info("Processing completed for file: {} on thread ID: {} (Thread Name: {})",
+//                            file.getOriginalFilename(), threadId, threadName);
+//                } catch (Exception e) {
+//                    logger.error("Error processing file: " + file.getOriginalFilename() + " on thread ID: " + Thread.currentThread().getId() + " (Thread Name: " + Thread.currentThread().getName() + ")", e);
+//                }
+//            }, taskExecutor);
+//
+//            futures.add(future);
+//        }
+//
+//        CompletableFuture<Void>[] futuresArray = futures.toArray(new CompletableFuture[0]);
+//        CompletableFuture<Void> allOf = CompletableFuture.allOf(futuresArray);
+//        allOf.join();
+//
+//        return ResponseEntity.status(HttpStatus.CREATED).build();
+//    }
+
     @GetMapping("/ingredients")
     public List<Ingredients> findAllIngredients(){
         return ingredientsService.getIngredients();
