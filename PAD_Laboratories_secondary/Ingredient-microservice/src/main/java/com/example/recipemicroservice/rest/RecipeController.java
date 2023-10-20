@@ -44,7 +44,7 @@ public class RecipeController {
         return "Received message: " + message;
     }
 
-    @PostMapping(value = "/addRecipe", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE}, produces = "application/json")
+    @PostMapping(value = "/addRecipe")
     public Recipes saveRecipe(@RequestBody Recipes recipe){
         return recipeService.saveRecipe(recipe);
     }
@@ -61,7 +61,6 @@ public class RecipeController {
     public List<Recipes> getRecipesByIngredient(@PathVariable String ingredient){
         return recipeService.findRecipesByIngredient(ingredient);
     }
-
 }
 
 

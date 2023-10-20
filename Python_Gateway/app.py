@@ -20,6 +20,21 @@ def hello_world():  # put application's code here
 if __name__ == '__main__':
     app.run(debug=True)
 
+#Status endpoint
+@app.route('/status', methods=['GET'])
+def gateway_status():
+    status = {"gateway": "online", "microservices": {}}
+
+    ingredient_status = check_microservice_status(INGREDEINT_MICROSERVICE_URL)
+    status["microservices"]["ingredient_microservice"] = ingredient_status
+
+    recipe_status = check_microservice_status(RECIPE_MICROSERVICE_URL)
+    status["microservices"]["recipe_microservice"] = recipe_status
+
+    return jsonify(status)
+
+
+
 #Controller to access the ingredient endpoints
 @app.route('/ingredients', methods = ['GET'])
 
@@ -90,11 +105,23 @@ def get_recipes():
         return json({"error": "Failed to retrieve recipes"}), response.status_code
 
 @app.route('/recipes/<ingredient>', methods=['GET'])
-def get_recipe_by_id(id):
-    url = f"{RECIPE_MICROSERVICE_URL}/recipe/{id}"
-    response = requests.get(url)
+def get_recipe_by_ingredient(ingredient):
+    cache_key = f'recipe{ingredient}'
+    cached_data = recipe_cache.get(cache_key)
 
-    return jsonify(response.json()), response.status_code
+    if cached_data:
+        print(recipe_cache)
+        return jsonify(cached_data)
+    else:
+        url = f"{RECIPE_MICROSERVICE_URL}/recipes/{ingredient}"
+        response = requests.get(url)
+
+        if response.status_code == 200:
+            recipe=response.json()
+            recipe_cache[cache_key] = recipe
+            return jsonify(recipe)
+        else:
+            return jsonify(response.json()), response.status_code
 
 @app.route('/add_recipe', methods=['POST'])
 def add_recipe():
