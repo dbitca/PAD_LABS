@@ -1,11 +1,23 @@
 from flask import Flask, jsonify, request
 from expiringdict import ExpiringDict
 import requests
+import logging
 
 app = Flask(__name__)
 
-INGREDEINT_MICROSERVICE_URL = "http://localhost:9191"
-RECIPE_MICROSERVICE_URL = "http://localhost:8081"
+INGREDIENT_MICROSERVICE_URL = None
+RECIPE_MICROSERVICE_URL = None
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()  # Log to the console
+        # logging.FileHandler('my_log.log')  # Log to a file
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 #ExipringDict instance for ingredients
 ingredient_cache = ExpiringDict(max_len=50, max_age_seconds=600, items=None)
@@ -20,26 +32,53 @@ def hello_world():  # put application's code here
 if __name__ == '__main__':
     app.run(debug=True)
 
-#Status endpoint
-@app.route('/status', methods=['GET'])
-def gateway_status():
-    status = {"gateway": "online", "microservices": {}}
+    # Execute fetch_microservice_urls function before the first request
+@app.before_first_request
+def before_first_request():
+    fetch_microservice_urls()
 
-    ingredient_status = check_microservice_status(INGREDEINT_MICROSERVICE_URL)
-    status["microservices"]["ingredient_microservice"] = ingredient_status
+def fetch_microservice_urls():
+    global INGREDIENT_MICROSERVICE_URL, RECIPE_MICROSERVICE_URL
 
-    recipe_status = check_microservice_status(RECIPE_MICROSERVICE_URL)
-    status["microservices"]["recipe_microservice"] = recipe_status
+        # Replace with your Service Discovery URL
+    service_discovery_url = "http://127.0.0.1:8001"
 
-    return jsonify(status)
+        # Fetch and set IngredientMicroservice URL
+    ingredient_status = fetch_service_info("IngredientMicroservice", service_discovery_url)
+    if ingredient_status.get("status") == "online":
+        INGREDIENT_MICROSERVICE_URL = ingredient_status.get("url")
+
+        # Fetch and set RecipeMicroservice URL
+        recipe_status = fetch_service_info("RecipeMicroservice", service_discovery_url)
+    if recipe_status.get("status") == "online":
+        RECIPE_MICROSERVICE_URL = recipe_status.get("url")
+
+        logger.info("Microservice URLs set")
 
 
+    # Fetch service information from Service Discovery
+def fetch_service_info(service_name, service_discovery_url):
+    service_info_url = f"{service_discovery_url}/get_info/{service_name}"
+
+    response = requests.get(service_info_url)
+    if response.status_code == 200:
+        service_info = response.json()
+        logger.info(service_info)
+
+            # Extract the service name, port, and construct the URL
+        service_name = service_info['name']
+        service_port = service_info['port']
+        service_url = f"http://127.0.0.1:{service_port}"
+
+        return {"status": "online", "info": service_info, "url": service_url}
+    else:
+        return {"status": "offline", "info": {}, "url": None}
 
 #Controller to access the ingredient endpoints
 @app.route('/ingredients', methods = ['GET'])
 
 def get_ingredients():
-    url = f"{INGREDEINT_MICROSERVICE_URL}/ingredients"
+    url = f"{INGREDIENT_MICROSERVICE_URL}/ingredients"
     response = requests.get(url)
 
     if response.status_code == 200:
@@ -48,9 +87,10 @@ def get_ingredients():
     else:
         return jsonify({"error": "Failed to retrieve ingredients"}), response.status_code
 
-@app.route('/add_ingredients', methods=['POST'])
+
+@app.route('/ingredients', methods=['POST'])
 def add_ingredient():
-    url = f"{INGREDEINT_MICROSERVICE_URL}/addIngredient"
+    url = f"{INGREDIENT_MICROSERVICE_URL}/addIngredient"
     request_data = request.get_json()
     ingredient_name = request_data.get("ingredient")
 
@@ -68,7 +108,7 @@ def get_ingredeint_by_id(id):
     if cached_data:
         return jsonify(cached_data)
     else:
-        url = f"{INGREDEINT_MICROSERVICE_URL}/ingredient/{id}"
+        url = f"{INGREDIENT_MICROSERVICE_URL}/ingredient/{id}"
         response = requests.get(url)
 
         if response.status_code == 200:
@@ -81,7 +121,7 @@ def get_ingredeint_by_id(id):
 
 @app.route('/update', methods=['PUT'])
 def update_ingredient():
-    url = f"{INGREDEINT_MICROSERVICE_URL}/update"
+    url = f"{INGREDIENT_MICROSERVICE_URL}/update"
 
     request_data = request.get_json()
     ingredient_entity = request_data.get("ingredient")
