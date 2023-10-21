@@ -20,8 +20,11 @@ import org.springframework.web.client.RestTemplate;
 
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 @RestController
 public class IngredientsController {
@@ -50,73 +53,162 @@ public class IngredientsController {
         this.ingredientsService = ingredientsService;
     }
 
-    @PostMapping("/addIngredient")
-    public Ingredients addIngredient(@RequestBody Ingredients ingredientEntity){
-//        String message = "Ingredient " + ingredientEntity.getIngredient() + " is now available for use.";
-//        restTemplate.postForObject("http://localhost:8081/notify", message, String.class);
-        return ingredientsService.saveIngredient(ingredientEntity);
-    }
-
     @Autowired
     @Qualifier("taskExecutor")
     private ThreadPoolTaskExecutor taskExecutor;
 
+    @PostMapping("/addIngredient")
+    public Ingredients addIngredient(@RequestBody Ingredients ingredientEntity) {
+        logger.info("Received a request to add an ingredient. Thread: " + Thread.currentThread().getName());
+        CompletableFuture<Ingredients> future = CompletableFuture.supplyAsync(() -> {
+            logger.info("Starting asynchronous task to save ingredient. Thread: " + Thread.currentThread().getName());
+            try {
+                Thread.sleep(0);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            return ingredientsService.saveIngredient(ingredientEntity);
+        }, taskExecutor);
+
+        try {
+            Ingredients result = future.get(5, TimeUnit.SECONDS); // Specify the timeout
+            return result;
+        } catch (TimeoutException e) {
+            // Handle the timeout, e.g., return a timeout response
+            return new Ingredients();
+        } catch (Exception e) {
+            // Handle other exceptions
+            return new Ingredients();
+        }
+    }
+
     @PostMapping("/addIngredients")
     public List<Ingredients> addIngredients(@RequestBody List<Ingredients> ingredientEntities) {
-        return ingredientsService.saveIngredients(ingredientEntities);
+        logger.info("Received a request to add ingredients. Thread: " + Thread.currentThread().getName());
+        CompletableFuture<List<Ingredients>> future = CompletableFuture.supplyAsync(() -> {
+            logger.info("Starting asynchronous task to save ingredients. Thread: " + Thread.currentThread().getName());
+            try {
+                Thread.sleep(0);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            return ingredientsService.saveIngredients(ingredientEntities);
+        }, taskExecutor);
+
+        try {
+            List<Ingredients> result = future.get(5, TimeUnit.SECONDS); // Specify the timeout
+            return result;
+        } catch (TimeoutException e) {
+            return Collections.emptyList();
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
     }
 
-//    @PostMapping(value = "/addIngredients", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE}, produces = "application" +
-//            "/json")
-//    public ResponseEntity addIngredients(@RequestParam(value = "files") MultipartFile[] files) throws Exception {
-//        List<CompletableFuture<Void>> futures = new ArrayList<>();
+ @GetMapping("/ingredients")
+    public List<Ingredients> findAllIngredients(){  logger.info("Received a request to get all ingredients. Thread: " + Thread.currentThread().getName());
+     CompletableFuture<List<Ingredients>> future = CompletableFuture.supplyAsync(() -> {
+         logger.info("Starting asynchronous task to get ingredients. Thread: " + Thread.currentThread().getName());
+         try {
+             Thread.sleep(0);
+         } catch (InterruptedException e) {
+             throw new RuntimeException(e);
+         }
+         return ingredientsService.getIngredients();
+     }, taskExecutor);
 
-//        for (MultipartFile file : files) {
-//            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-//                try {
-//
-//                    long threadId = Thread.currentThread().getId();
-//                    String threadName = Thread.currentThread().getName();
-//
-//                    logger.info("Processing started for file: {} on thread ID: {} (Thread Name: {})",
-//                            file.getOriginalFilename(), threadId, threadName);
-//
-//                    ingredientsService.saveIngredients(file, 1);
-//
-//                    logger.info("Processing completed for file: {} on thread ID: {} (Thread Name: {})",
-//                            file.getOriginalFilename(), threadId, threadName);
-//                } catch (Exception e) {
-//                    logger.error("Error processing file: " + file.getOriginalFilename() + " on thread ID: " + Thread.currentThread().getId() + " (Thread Name: " + Thread.currentThread().getName() + ")", e);
-//                }
-//            }, taskExecutor);
-//
-//            futures.add(future);
-//        }
-//
-//        CompletableFuture<Void>[] futuresArray = futures.toArray(new CompletableFuture[0]);
-//        CompletableFuture<Void> allOf = CompletableFuture.allOf(futuresArray);
-//        allOf.join();
-//
-//        return ResponseEntity.status(HttpStatus.CREATED).build();
-//    }
+     try {
+         List<Ingredients> result = future.get(5, TimeUnit.SECONDS); // Specify the timeout
+         return result;
+     } catch (TimeoutException e) {
+         return Collections.emptyList();
+     } catch (Exception e) {
+         return Collections.emptyList();
+     }
 
-    @GetMapping("/ingredients")
-    public List<Ingredients> findAllIngredients(){
-        return ingredientsService.getIngredients();
-    }
+ }
+
     @GetMapping("/ingredient/{id}")
-    public Ingredients findIngredientById(@PathVariable Long id){
-        return ingredientsService.getIngredientById(id);
+    public Ingredients findIngredientById(@PathVariable Long id) {
+        logger.info("Received a request to retrieve ingredient by ID. Thread: " + Thread.currentThread().getName());
+        CompletableFuture<Ingredients> future = CompletableFuture.supplyAsync(() -> {
+            logger.info("Starting asynchronous task to retrieve ingredient by ID. Thread: " + Thread.currentThread().getName());
+            try {
+                Thread.sleep(0);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            Ingredients result = ingredientsService.getIngredientById(id);
+            if (result == null) {
+                throw new RuntimeException("Ingredient not found"); // Simulate a not found scenario
+            }
+            return result;
+        }, taskExecutor);
+
+        try {
+            Ingredients result = future.get(5, TimeUnit.SECONDS); // Specify the timeout
+            return result;
+        } catch (TimeoutException e) {
+            return new Ingredients(); // An empty Ingredients object, for example
+        } catch (Exception e) {
+            return new Ingredients();
+        }
     }
 
     @PutMapping("/update")
-    public Ingredients updateIngredient(@RequestBody Ingredients ingredientEntity){
-        return ingredientsService.updateIngredient(ingredientEntity);
+    public Ingredients updateIngredient(@RequestBody Ingredients ingredientEntity) {
+        logger.info("Received a request to update ingredient. Thread: " + Thread.currentThread().getName());
+        CompletableFuture<Ingredients> future = CompletableFuture.supplyAsync(() -> {
+            logger.info("Starting asynchronous task to update ingredient. Thread: " + Thread.currentThread().getName());
+            try {
+                // Simulate a long-running task (e.g., 10 seconds)
+                Thread.sleep(0);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            Ingredients result = ingredientsService.updateIngredient(ingredientEntity);
+            if (result == null) {
+                throw new RuntimeException("Ingredient not found"); // Simulate a not found scenario
+            }
+            return result;
+        }, taskExecutor);
+
+        try {
+            Ingredients result = future.get(5, TimeUnit.SECONDS); // Specify the timeout
+            return result;
+        } catch (TimeoutException e) {
+            return new Ingredients(); // An empty Ingredients object, for example
+        } catch (Exception e) {
+            return new Ingredients();
+        }
     }
 
     @DeleteMapping("/delete/{id}")
-    public String deleteIngredient(@PathVariable Long id){
-        return ingredientsService.deleteIngredient(id);
+    public String deleteIngredient(@PathVariable Long id) {
+        logger.info("Received a request to delete ingredient. Thread: " + Thread.currentThread().getName());
+        CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
+            logger.info("Starting asynchronous task to delete ingredient. Thread: " + Thread.currentThread().getName());
+            try {
+
+                Thread.sleep(0);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            String result = ingredientsService.deleteIngredient(id);
+            if (result == null) {
+                throw new RuntimeException("Ingredient not found");
+            }
+            return result;
+        }, taskExecutor);
+
+        try {
+            String result = future.get(5, TimeUnit.SECONDS);
+            return result;
+        } catch (TimeoutException e) {
+            return "Timeout occurred while deleting the ingredient";
+        } catch (Exception e) {
+            return "An error occurred while deleting the ingredient";
+        }
     }
 }
 
