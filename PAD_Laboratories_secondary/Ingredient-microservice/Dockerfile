@@ -4,6 +4,7 @@ COPY pom.xml PAD_Laboratories_secondary/Ingredient-microservice/pom.xml
 
 RUN mvn -f PAD_Laboratories_secondary/Ingredient-microservice/pom.xml clean
 
-EXPOSE 8080
+EXPOSE 8081
 
-ENTRYPOINT ["java","-jar","ingredientmicroservice.jar"]
+RUN ["ls"]
+RUN ["java","-jar","target/Ingredient-microservice-0.0.1-SNAPSHOT.jar"]

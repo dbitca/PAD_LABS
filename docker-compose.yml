@@ -1,62 +1,98 @@
 version: '3'
 services:
-  ingredient_service:
-    image: ingredient_microservice
-    container_name: "ingredient_microservice"
+  IngredientMicroservice:
+    image: dbitca785/ingredient_service:tagname
+    container_name: IngredientMicroservice
     restart: unless-stopped
     depends_on:
       - service_discovery
+      - mysqldb
     ports:
-      - "8080:8080"
+      - 9191:9191
     networks:
-      pad-net:
+      - pad-net
+    environment:
+      spring.datasource.driver-class-name : com.mysql.cj.jdbc.Driver
+      spring.datasource.url : jdbc:mysql://mysqldb:3307/ingredients?createDatabaseIfNotExist=true
+      spring.datasource.username : root
+      spring.datasource.password : root
+      spring.jpa.properties.hibernate.dialect : org.hibernate.dialect.MySQLDialect
+      spring.jpa.hibernate.ddl-auto : create
+      spring.jpa.show-sql : true
+      server.port: 9191
+      service.discovery.url: http://service_discovery:8001/
+      spring.application.name: IngredientMicroservice
 
-  recipe_service:
-    image: recipe_microservice:latest
-    container_name: "recipe_microservice"
+  RecipeMicroservice:
+    image: dbitca785/recipe_service:tagname
+    container_name: RecipeMicroservice
     restart: unless-stopped
     depends_on:
       - service_discovery
+#      - mysqldb
     ports:
-      - "8081:8081"
+      - 8081:8081
     networks:
-      pad-net:
+      - pad-net
+    environment:
+      spring.datasource.driver-class-name : com.mysql.cj.jdbc.Driver
+      spring.datasource.url : jdbc:mysql://172.30.176.1:3306/recipes?createDatabaseIfNotExist=true
+      spring.datasource.username : root
+      spring.datasource.password : root
+      spring.jpa.properties.hibernate.dialect : org.hibernate.dialect.MySQLDialect
+      spring.jpa.hibernate.ddl-auto : create
+      spring.jpa.show-sql : true
+      server.port: 8081
+      service.discovery.url: http://service_discovery:8001/
+      spring.application.name: RecipeMicroservice
+
   gateway:
-    image: gateway:latest
-    container_name: "gateway"
-    restart: unless-stopped
-    depends_on:
-      - service_discovery
-      - ingredient_service
-      - recipe_service
-    ports:
-      - "5000:5000"
-    networks:
-      pad-net:
+      image: gateway:latest
+      container_name: "gateway"
+      restart: unless-stopped
+      depends_on:
+        - service_discovery
+        - IngredientMicroservice
+        - RecipeMicroservice
+      ports:
+        - 5000:5000
+      networks:
+        - pad-net
 
   service_discovery:
-    image: service_discovery:latest
+    image: service-discovery:latest
     container_name: "service_discovery"
     restart: unless-stopped
     ports:
-      - "8001:8001"
+      - 8001:8001
     networks:
-      pad-net:
+      - pad-net
 
   mysqldb:
-    image: "mysql:latest"
+    image: mysql/mysql-server:latest
+    container_name: MySql
     restart: always
     ports:
-      - 3306:3306
+      - 3307:3306
     networks:
-      pad-net:
+      - pad-net
     environment:
+      MYSQL_PASSWORD: 12345
+      MYSQL_ROOT_PASSWORD: root
       MYSQL_USER: root
-      MYSQL_PASSWORD: Mitsulikaa.11
-      MYSQL_ROOT_PASSWORD: Mitsulikaa.11
+      MYSQL_DATABASE: recipes
+    command:
+      - --default-authentication-plugin=mysql_native_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      timeout: 20s
+      retries: 10
 
 volumes:
   mysql_data:
 
 networks:
   pad-net:
+    driver: bridge
