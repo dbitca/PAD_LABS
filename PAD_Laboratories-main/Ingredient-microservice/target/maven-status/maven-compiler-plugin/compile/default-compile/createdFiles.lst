@@ -1,5 +1,9 @@
-com\example\ingredientmicroservice\IngredientsController.class
-com\example\ingredientmicroservice\Ingredient_entity.class
-com\example\ingredientmicroservice\IngredientRepository.class
-com\example\ingredientmicroservice\IngredientServiceImpl.class
+com\example\ingredientmicroservice\rest\IngredientsController$1.class
+com\example\ingredientmicroservice\domain\Ingredients.class
 com\example\ingredientmicroservice\IngredientMicroserviceApplication.class
+com\example\ingredientmicroservice\rest\ServiceRegistration.class
+com\example\ingredientmicroservice\domain\RegistrationInfo.class
+com\example\ingredientmicroservice\rest\IngredientsController.class
+com\example\ingredientmicroservice\service\IngredientServiceImpl.class
+com\example\ingredientmicroservice\config\AsyncConfig.class
+com\example\ingredientmicroservice\repository\IngredientRepository.class

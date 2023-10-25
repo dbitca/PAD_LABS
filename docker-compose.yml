@@ -1,0 +1,62 @@
+version: '3'
+services:
+  ingredient_service:
+    image: ingredient_microservice
+    container_name: "ingredient_microservice"
+    restart: unless-stopped
+    depends_on:
+      - service_discovery
+    ports:
+      - "8080:8080"
+    networks:
+      pad-net:
+
+  recipe_service:
+    image: recipe_microservice:latest
+    container_name: "recipe_microservice"
+    restart: unless-stopped
+    depends_on:
+      - service_discovery
+    ports:
+      - "8081:8081"
+    networks:
+      pad-net:
+  gateway:
+    image: gateway:latest
+    container_name: "gateway"
+    restart: unless-stopped
+    depends_on:
+      - service_discovery
+      - ingredient_service
+      - recipe_service
+    ports:
+      - "5000:5000"
+    networks:
+      pad-net:
+
+  service_discovery:
+    image: service_discovery:latest
+    container_name: "service_discovery"
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    networks:
+      pad-net:
+
+  mysqldb:
+    image: "mysql:latest"
+    restart: always
+    ports:
+      - 3306:3306
+    networks:
+      pad-net:
+    environment:
+      MYSQL_USER: root
+      MYSQL_PASSWORD: Mitsulikaa.11
+      MYSQL_ROOT_PASSWORD: Mitsulikaa.11
+
+volumes:
+  mysql_data:
+
+networks:
+  pad-net:
