@@ -56,7 +56,7 @@ public class RecipeController {
 
     @PostMapping("/notify")
     public String receiveNotification(@RequestBody String message){
-        System.out.println("Received message" + message);
+        logger.info("Received message" + message);
         return "Received message: " + message;
     }
 

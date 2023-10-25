@@ -48,4 +48,4 @@ def get_service_info(service_name):
         return ({"message": "Service not found"}), 404
 
 if __name__ == '__main__':
-    app.run(debug=True, port=8001)
+    app.run(debug=True, port=8001, host='0.0.0.0')

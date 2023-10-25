@@ -30,7 +30,7 @@ def hello_world():  # put application's code here
     return 'Hello World!'
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
 
     # Execute fetch_microservice_urls function before the first request
 @app.before_first_request
@@ -40,15 +40,13 @@ def before_first_request():
 def fetch_microservice_urls():
     global INGREDIENT_MICROSERVICE_URL, RECIPE_MICROSERVICE_URL
 
-        # Replace with your Service Discovery URL
-    service_discovery_url = "http://127.0.0.1:8001"
+    service_discovery_url = "http://0.0.0.0:8001"
 
-        # Fetch and set IngredientMicroservice URL
+
     ingredient_status = fetch_service_info("IngredientMicroservice", service_discovery_url)
     if ingredient_status.get("status") == "online":
         INGREDIENT_MICROSERVICE_URL = ingredient_status.get("url")
 
-        # Fetch and set RecipeMicroservice URL
         recipe_status = fetch_service_info("RecipeMicroservice", service_discovery_url)
     if recipe_status.get("status") == "online":
         RECIPE_MICROSERVICE_URL = recipe_status.get("url")
@@ -56,7 +54,7 @@ def fetch_microservice_urls():
         logger.info("Microservice URLs set")
 
 
-    # Fetch service information from Service Discovery
+
 def fetch_service_info(service_name, service_discovery_url):
     service_info_url = f"{service_discovery_url}/get_info/{service_name}"
 
@@ -65,10 +63,10 @@ def fetch_service_info(service_name, service_discovery_url):
         service_info = response.json()
         logger.info(service_info)
 
-            # Extract the service name, port, and construct the URL
+
         service_name = service_info['name']
         service_port = service_info['port']
-        service_url = f"http://127.0.0.1:{service_port}"
+        service_url = f"http://0.0.0.0:{service_port}"
 
         return {"status": "online", "info": service_info, "url": service_url}
     else:

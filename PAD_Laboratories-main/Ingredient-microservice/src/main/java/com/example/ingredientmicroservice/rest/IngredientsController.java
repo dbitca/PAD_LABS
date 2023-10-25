@@ -74,10 +74,8 @@ public class IngredientsController {
             Ingredients result = future.get(5, TimeUnit.SECONDS); // Specify the timeout
             return result;
         } catch (TimeoutException e) {
-            // Handle the timeout, e.g., return a timeout response
             return new Ingredients();
         } catch (Exception e) {
-            // Handle other exceptions
             return new Ingredients();
         }
     }
@@ -149,7 +147,7 @@ public class IngredientsController {
             Ingredients result = future.get(5, TimeUnit.SECONDS); // Specify the timeout
             return result;
         } catch (TimeoutException e) {
-            return new Ingredients(); // An empty Ingredients object, for example
+            return new Ingredients();
         } catch (Exception e) {
             return new Ingredients();
         }
@@ -161,14 +159,13 @@ public class IngredientsController {
         CompletableFuture<Ingredients> future = CompletableFuture.supplyAsync(() -> {
             logger.info("Starting asynchronous task to update ingredient. Thread: " + Thread.currentThread().getName());
             try {
-                // Simulate a long-running task (e.g., 10 seconds)
                 Thread.sleep(0);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
             Ingredients result = ingredientsService.updateIngredient(ingredientEntity);
             if (result == null) {
-                throw new RuntimeException("Ingredient not found"); // Simulate a not found scenario
+                throw new RuntimeException("Ingredient not found");
             }
             return result;
         }, taskExecutor);
@@ -177,7 +174,7 @@ public class IngredientsController {
             Ingredients result = future.get(5, TimeUnit.SECONDS); // Specify the timeout
             return result;
         } catch (TimeoutException e) {
-            return new Ingredients(); // An empty Ingredients object, for example
+            return new Ingredients();
         } catch (Exception e) {
             return new Ingredients();
         }
