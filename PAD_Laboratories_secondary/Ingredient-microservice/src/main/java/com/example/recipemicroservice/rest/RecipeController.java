@@ -138,7 +138,7 @@ public class RecipeController {
         CompletableFuture<List<Recipes>> future = CompletableFuture.supplyAsync(() -> {
             logger.info("Starting asynchronous task to get recipes by ingredient. Thread: " + Thread.currentThread().getName());
             try {
-                Thread.sleep(0);
+                Thread.sleep(1000);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }

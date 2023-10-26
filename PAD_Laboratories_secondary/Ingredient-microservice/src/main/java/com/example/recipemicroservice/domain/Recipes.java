@@ -23,7 +23,7 @@ public class Recipes {
     @Column (name = "name")
     private String name;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "ingredients", joinColumns = @JoinColumn(name = "recipe_id"))
     @Column(name = "ingredient_id")
     private List<String> ingredients;

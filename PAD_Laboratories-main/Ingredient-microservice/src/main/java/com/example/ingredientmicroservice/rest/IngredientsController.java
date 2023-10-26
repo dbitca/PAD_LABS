@@ -86,7 +86,7 @@ public class IngredientsController {
         CompletableFuture<List<Ingredients>> future = CompletableFuture.supplyAsync(() -> {
             logger.info("Starting asynchronous task to save ingredients. Thread: " + Thread.currentThread().getName());
             try {
-                Thread.sleep(0);
+                Thread.sleep(10000);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -94,7 +94,7 @@ public class IngredientsController {
         }, taskExecutor);
 
         try {
-            List<Ingredients> result = future.get(5, TimeUnit.SECONDS); // Specify the timeout
+            List<Ingredients> result = future.get(5, TimeUnit.SECONDS);
             return result;
         } catch (TimeoutException e) {
             return Collections.emptyList();
@@ -116,7 +116,7 @@ public class IngredientsController {
      }, taskExecutor);
 
      try {
-         List<Ingredients> result = future.get(5, TimeUnit.SECONDS); // Specify the timeout
+         List<Ingredients> result = future.get(1, TimeUnit.SECONDS); // Specify the timeout
          return result;
      } catch (TimeoutException e) {
          return Collections.emptyList();

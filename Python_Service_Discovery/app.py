@@ -47,5 +47,10 @@ def get_service_info(service_name):
     else:
         return ({"message": "Service not found"}), 404
 
+@app.route('/status', methods=['GET'])
+def service_discovery_status():
+    return jsonify({"status": "Service Discovery is running"})
+
+
 if __name__ == '__main__':
-    app.run(debug=True, port=8001, host='0.0.0.0')
+    app.run(debug=True, port=8001, host='127.0.0.1')

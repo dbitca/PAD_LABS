@@ -30,7 +30,7 @@ def hello_world():  # put application's code here
     return 'Hello World!'
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='127.0.0.1', port=5000)
 
     # Execute fetch_microservice_urls function before the first request
 @app.before_first_request
@@ -40,7 +40,7 @@ def before_first_request():
 def fetch_microservice_urls():
     global INGREDIENT_MICROSERVICE_URL, RECIPE_MICROSERVICE_URL
 
-    service_discovery_url = "http://0.0.0.0:8001"
+    service_discovery_url = "http://127.0.0.1:8001"
 
 
     ingredient_status = fetch_service_info("IngredientMicroservice", service_discovery_url)
@@ -66,11 +66,26 @@ def fetch_service_info(service_name, service_discovery_url):
 
         service_name = service_info['name']
         service_port = service_info['port']
-        service_url = f"http://0.0.0.0:{service_port}"
+        service_url = f"http://127.0.0.1:{service_port}"
 
         return {"status": "online", "info": service_info, "url": service_url}
     else:
         return {"status": "offline", "info": {}, "url": None}
+
+@app.route('/status', methods=['GET'])
+def application_status():
+    ingredient_response = requests.get(f"{INGREDIENT_MICROSERVICE_URL}/status")
+    recipe_response = requests.get(f"{RECIPE_MICROSERVICE_URL}/status")
+
+    ingredient_status = "Online" if ingredient_response.status_code == 200 else "Offline"
+    recipe_status = "Online" if recipe_response.status_code == 200 else "Offline"
+
+    status_info = {
+        "Ingredient Microservice Status": ingredient_status,
+        "Recipe Microservice Status": recipe_status
+    }
+
+    return jsonify(status_info)
 
 #Controller to access the ingredient endpoints
 @app.route('/ingredients', methods = ['GET'])
@@ -98,6 +113,18 @@ def add_ingredient():
     print(f'Added ingredient: {ingredient_name}. Response: {response.json()}, Status code: {response.status_code}')
 
     return 'Ingredients added successfully!'
+
+@app.route('/add_ingredients', methods=['POST'])
+def add_ingredients():
+    url = f"{INGREDIENT_MICROSERVICE_URL}/addIngredients"
+    request_data = request.get_json()
+
+    response = requests.post(url, json=request_data)
+
+    if response.status_code == 200:
+        return jsonify({"message": "Ingredients added successfully!"})
+    else:
+        return jsonify({"error": "Failed to add ingredients"}), response.status_code
 
 @app.route('/ingredient/<id>', methods=['GET'])
 def get_ingredeint_by_id(id):
@@ -130,7 +157,6 @@ def update_ingredient():
 
     return jsonify(response.json()), response.status_code
 
-#Controller to access the recipe endpoints
 @app.route('/recipes', methods=['GET'])
 def get_recipes():
     url = f"{RECIPE_MICROSERVICE_URL}/recipes"
@@ -140,7 +166,7 @@ def get_recipes():
         recipes = response.json()
         return jsonify(recipes)
     else:
-        return json({"error": "Failed to retrieve recipes"}), response.status_code
+        return jsonify({"error": "Failed to retrieve recipes"}), response.status_code
 
 @app.route('/recipes/<ingredient>', methods=['GET'])
 def get_recipe_by_ingredient(ingredient):
