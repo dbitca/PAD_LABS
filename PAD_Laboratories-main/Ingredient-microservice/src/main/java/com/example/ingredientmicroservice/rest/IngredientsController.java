@@ -3,6 +3,7 @@ package com.example.ingredientmicroservice.rest;
 import com.example.ingredientmicroservice.service.IngredientServiceImpl;
 import com.example.ingredientmicroservice.domain.Ingredients;
 
+import org.hibernate.id.insert.InsertReturningDelegate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,23 +59,23 @@ public class IngredientsController {
     private ThreadPoolTaskExecutor taskExecutor;
 
     @PostMapping("/addIngredient")
-    public Ingredients addIngredient(@RequestBody Ingredients ingredientEntity) {
-        logger.info("Received a request to add an ingredient. Thread: " + Thread.currentThread().getName());
+    public Ingredients addIngredient(@RequestBody Ingredients ingredientEntity) throws TimeoutException {
+        logger.info("Received a request to add an ingredient.");
         CompletableFuture<Ingredients> future = CompletableFuture.supplyAsync(() -> {
             logger.info("Starting asynchronous task to save ingredient. Thread: " + Thread.currentThread().getName());
-            try {
-                Thread.sleep(0);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+//            try {
+//                Thread.sleep(0);
+//            } catch (InterruptedException e) {
+//                throw new RuntimeException(e);
+//            }
             return ingredientsService.saveIngredient(ingredientEntity);
         }, taskExecutor);
 
         try {
-            Ingredients result = future.get(5, TimeUnit.SECONDS); // Specify the timeout
+            Ingredients result = future.get(5, TimeUnit.MILLISECONDS);
             return result;
         } catch (TimeoutException e) {
-            return new Ingredients();
+            throw new TimeoutException("Operation timed out");
         } catch (Exception e) {
             return new Ingredients();
         }
@@ -82,11 +83,11 @@ public class IngredientsController {
 
     @PostMapping("/addIngredients")
     public List<Ingredients> addIngredients(@RequestBody List<Ingredients> ingredientEntities) {
-        logger.info("Received a request to add ingredients. Thread: " + Thread.currentThread().getName());
+        logger.info("Received a request to add ingredients.");
         CompletableFuture<List<Ingredients>> future = CompletableFuture.supplyAsync(() -> {
             logger.info("Starting asynchronous task to save ingredients. Thread: " + Thread.currentThread().getName());
             try {
-                Thread.sleep(10000);
+                Thread.sleep(0);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -96,15 +97,13 @@ public class IngredientsController {
         try {
             List<Ingredients> result = future.get(5, TimeUnit.SECONDS);
             return result;
-        } catch (TimeoutException e) {
-            return Collections.emptyList();
         } catch (Exception e) {
             return Collections.emptyList();
         }
     }
 
  @GetMapping("/ingredients")
-    public List<Ingredients> findAllIngredients(){  logger.info("Received a request to get all ingredients. Thread: " + Thread.currentThread().getName());
+    public List<Ingredients> findAllIngredients(){  logger.info("Received a request to get all ingredients.");
      CompletableFuture<List<Ingredients>> future = CompletableFuture.supplyAsync(() -> {
          logger.info("Starting asynchronous task to get ingredients. Thread: " + Thread.currentThread().getName());
          try {
@@ -116,7 +115,7 @@ public class IngredientsController {
      }, taskExecutor);
 
      try {
-         List<Ingredients> result = future.get(1, TimeUnit.SECONDS); // Specify the timeout
+         List<Ingredients> result = future.get(10, TimeUnit.SECONDS); // Specify the timeout
          return result;
      } catch (TimeoutException e) {
          return Collections.emptyList();
@@ -128,7 +127,7 @@ public class IngredientsController {
 
     @GetMapping("/ingredient/{id}")
     public Ingredients findIngredientById(@PathVariable Long id) {
-        logger.info("Received a request to retrieve ingredient by ID. Thread: " + Thread.currentThread().getName());
+        logger.info("Received a request to retrieve ingredient by ID.");
         CompletableFuture<Ingredients> future = CompletableFuture.supplyAsync(() -> {
             logger.info("Starting asynchronous task to retrieve ingredient by ID. Thread: " + Thread.currentThread().getName());
             try {
@@ -155,7 +154,7 @@ public class IngredientsController {
 
     @PutMapping("/update")
     public Ingredients updateIngredient(@RequestBody Ingredients ingredientEntity) {
-        logger.info("Received a request to update ingredient. Thread: " + Thread.currentThread().getName());
+        logger.info("Received a request to update ingredient.");
         CompletableFuture<Ingredients> future = CompletableFuture.supplyAsync(() -> {
             logger.info("Starting asynchronous task to update ingredient. Thread: " + Thread.currentThread().getName());
             try {
@@ -171,7 +170,7 @@ public class IngredientsController {
         }, taskExecutor);
 
         try {
-            Ingredients result = future.get(5, TimeUnit.SECONDS); // Specify the timeout
+            Ingredients result = future.get(5, TimeUnit.SECONDS);
             return result;
         } catch (TimeoutException e) {
             return new Ingredients();
@@ -182,7 +181,7 @@ public class IngredientsController {
 
     @DeleteMapping("/delete/{id}")
     public String deleteIngredient(@PathVariable Long id) {
-        logger.info("Received a request to delete ingredient. Thread: " + Thread.currentThread().getName());
+        logger.info("Received a request to delete ingredient.");
         CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
             logger.info("Starting asynchronous task to delete ingredient. Thread: " + Thread.currentThread().getName());
             try {

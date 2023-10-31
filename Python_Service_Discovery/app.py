@@ -7,8 +7,8 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler()  # Log to the console
-        # logging.FileHandler('my_log.log')  # Log to a file
+        logging.StreamHandler()
+        # logging.FileHandler('my_log.log')
     ]
 )
 

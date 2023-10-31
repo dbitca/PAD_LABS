@@ -131,6 +131,7 @@ def get_ingredeint_by_id(id):
     cache_key = f'ingredient_{id}'
     cached_data = ingredient_cache.get(cache_key)
     if cached_data:
+        print(f"Data taken from cache: {cached_data}")
         return jsonify(cached_data)
     else:
         url = f"{INGREDIENT_MICROSERVICE_URL}/ingredient/{id}"
@@ -174,7 +175,7 @@ def get_recipe_by_ingredient(ingredient):
     cached_data = recipe_cache.get(cache_key)
 
     if cached_data:
-        print(recipe_cache)
+        print(f"Data taken from cache: {cached_data}")
         return jsonify(cached_data)
     else:
         url = f"{RECIPE_MICROSERVICE_URL}/recipes/{ingredient}"
