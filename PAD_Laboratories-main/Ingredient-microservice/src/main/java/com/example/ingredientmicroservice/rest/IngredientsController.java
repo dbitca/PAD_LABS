@@ -72,7 +72,7 @@ public class IngredientsController {
         }, taskExecutor);
 
         try {
-            Ingredients result = future.get(5, TimeUnit.MILLISECONDS);
+            Ingredients result = future.get(5, TimeUnit.SECONDS);
             return result;
         } catch (TimeoutException e) {
             throw new TimeoutException("Operation timed out");

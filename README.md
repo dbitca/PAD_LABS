@@ -30,7 +30,7 @@ Manages recipe-related data and interacts with its own database. Handles recipe 
 Provides dynamic service registration and discovery. Allows microservices to find and communicate with each other.
 
 ## Ingredient Microservice Endpoints
-#### NOTE: In order for the microservice to run correctly, access the POST endpoints first. Specifically, addIngredient or addIngredients.
+#### NOTE: The endpoints enumerated below are the endpoints contained in the POSTMAN collection.
 
 ### `GET /status`
 
@@ -39,10 +39,11 @@ Provides dynamic service registration and discovery. Allows microservices to fin
 - **Request Body:** None
 - **Response:**
     - *Content-Type:* `text/plain`
-    - *Body:* A string indicating the service status, e.g., "Service status: UP"
+    - *Body:* A string indicating the status of the services the Gateway communicates with:
+    - "Ingredient Microservice Status: Online"
+    - "Recipe Microservice Status: Online"
 
 ### `POST /addIngredient`
-
 - **Description:** Add a single ingredient.
 - **Request Method:** POST
 - **Request Body:**
@@ -127,7 +128,7 @@ Provides dynamic service registration and discovery. Allows microservices to fin
 
 # Recipe Microservice Endpoints
 
-#### NOTE: In order for the microservice to run correctly, access the POST endpoints first. Specifically, addRecipe.
+#### NOTE: The endpoints enumerated below are the endpoints contained in the POSTMAN collection.
 
 ### `GET /status`
 
@@ -137,20 +138,6 @@ Provides dynamic service registration and discovery. Allows microservices to fin
 - **Response:**
   - *Content-Type:* `text/plain`
   - *Body:* A string indicating the service status, e.g., "Service status: UP"
-
-### `POST /notify`
-
-- **Description:** Receive and log a notification message.
-- **Request Method:** POST
-- **Request Body:**
-  - *Content-Type:* `application/json`
-  - *Body Example:*
-    ```json
-    "Your notification message here"
-    ```
-- **Response:**
-  - *Content-Type:* `text/plain`
-  - *Body:* A string indicating the received message.
 
 ### `POST /addRecipe`
 
@@ -199,3 +186,28 @@ Provides dynamic service registration and discovery. Allows microservices to fin
   - *Content-Type:* `application/json`
   - *Body:* An array of recipes containing the specified ingredient as JSON objects.
 
+### Docker Images
+In order to test the application, run the compose file from the PAD_LABORATORIES directory, using the commands:
+```cmd
+docker compose pull
+```
+```cmd
+docker compose up
+```
+
+### NOTE: 
+At this point in the implementation, the ingredient database must be created manually. 
+
+Go to: *pad_laboratories-db-1* image
+
+Write the command: *psql -U postgres*
+
+Write the command: *create database ingredients;*
+
+I will later write the script for this database to be created automatically.
+
+
+The application is listening on port 5000. The Postman collection also contains calls on port 8001, specifically the 
+Service Discovery port. You can use this endpoint to check the health of the Service Discovery. 
+
+Please NOTE that there are multiple modifications to be made to the implementation, this is only the starting point.

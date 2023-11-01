@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from expiringdict import ExpiringDict
 import requests
 import logging
+import os
 
 app = Flask(__name__)
 
@@ -29,48 +30,47 @@ recipe_cache = ExpiringDict(max_len=50, max_age_seconds=600, items=None)
 def hello_world():  # put application's code here
     return 'Hello World!'
 
-if __name__ == '__main__':
-    app.run(debug=True, host='127.0.0.1', port=5000)
-
+INGREDIENT_MICROSERVICE_URL = 'http://192.168.0.91:9191'
+RECIPE_MICROSERVICE_URL = 'http://192.168.0.69:8081'
     # Execute fetch_microservice_urls function before the first request
-@app.before_first_request
-def before_first_request():
-    fetch_microservice_urls()
+# @app.before_first_request
+# def before_first_request():
+#     fetch_microservice_urls()
 
-def fetch_microservice_urls():
-    global INGREDIENT_MICROSERVICE_URL, RECIPE_MICROSERVICE_URL
-
-    service_discovery_url = "http://127.0.0.1:8001"
-
-
-    ingredient_status = fetch_service_info("IngredientMicroservice", service_discovery_url)
-    if ingredient_status.get("status") == "online":
-        INGREDIENT_MICROSERVICE_URL = ingredient_status.get("url")
-
-        recipe_status = fetch_service_info("RecipeMicroservice", service_discovery_url)
-    if recipe_status.get("status") == "online":
-        RECIPE_MICROSERVICE_URL = recipe_status.get("url")
-
-        logger.info("Microservice URLs set")
-
-
-
-def fetch_service_info(service_name, service_discovery_url):
-    service_info_url = f"{service_discovery_url}/get_info/{service_name}"
-
-    response = requests.get(service_info_url)
-    if response.status_code == 200:
-        service_info = response.json()
-        logger.info(service_info)
+# def fetch_microservice_urls():
+#     global INGREDIENT_MICROSERVICE_URL, RECIPE_MICROSERVICE_URL
+#
+#     service_discovery_url = "http://192.168.0.81:8001"
+#
+#
+#     ingredient_status = fetch_service_info("IngredientMicroservice", service_discovery_url)
+#     if ingredient_status.get("status") == "online":
+#         INGREDIENT_MICROSERVICE_URL = ingredient_status.get("url")
+#
+#         recipe_status = fetch_service_info("RecipeMicroservice", service_discovery_url)
+#     if recipe_status.get("status") == "online":
+#         RECIPE_MICROSERVICE_URL = recipe_status.get("url")
+#
+#         logger.info("Microservice URLs set")
 
 
-        service_name = service_info['name']
-        service_port = service_info['port']
-        service_url = f"http://127.0.0.1:{service_port}"
 
-        return {"status": "online", "info": service_info, "url": service_url}
-    else:
-        return {"status": "offline", "info": {}, "url": None}
+# def fetch_service_info(service_name, service_discovery_url):
+#     service_info_url = f"{service_discovery_url}/get_info/{service_name}"
+#
+#     response = requests.get(service_info_url)
+#     if response.status_code == 200:
+#         service_info = response.json()
+#         logger.info(service_info)
+#
+#
+#         service_name = service_info['name']
+#         service_port = service_info['port']
+#         service_url = f"http://127.0.0.1:{service_port}"
+#
+#         return {"status": "online", "info": service_info, "url": service_url}
+#     else:
+#         return {"status": "offline", "info": {}, "url": None}
 
 @app.route('/status', methods=['GET'])
 def application_status():
@@ -145,18 +145,18 @@ def get_ingredeint_by_id(id):
         else:
             return jsonify({"error": "Failed to retrieve ingredient"}), response.status_code
 
-@app.route('/update', methods=['PUT'])
-def update_ingredient():
-    url = f"{INGREDIENT_MICROSERVICE_URL}/update"
-
-    request_data = request.get_json()
-    ingredient_entity = request_data.get("ingredient")
-
-    response = requests.put(url, json={
-        "ingredient" : ingredient_entity
-    })
-
-    return jsonify(response.json()), response.status_code
+# @app.route('/update', methods=['PUT'])
+# def update_ingredient():
+#     url = f"{INGREDIENT_MICROSERVICE_URL}/update"
+#
+#     request_data = request.get_json()
+#     ingredient_entity = request_data.get("ingredient")
+#
+#     response = requests.put(url, json={
+#         "ingredient" : ingredient_entity
+#     })
+#
+#     return jsonify(response.json()), response.status_code
 
 @app.route('/recipes', methods=['GET'])
 def get_recipes():
@@ -196,3 +196,6 @@ def add_recipe():
     print(f'Added recipe. Response:{response.json()}, Status code: {response.status_code}')
 
     return 'Recipe added successfully!'
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)

@@ -1,0 +1,138 @@
+{
+	"info": {
+		"_postman_id": "8f6060c6-85ae-4427-a477-87c63a9293de",
+		"name": "PAD",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "24684032"
+	},
+	"item": [
+		{
+			"name": "addRecipe",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"recipeId\": \"recipe12345\",\r\n    \"name\": \"Spaghetti Carbonara\",\r\n    \"ingredients\": [\"Spaghetti\", \"Eggs\", \"Pancetta\", \"Parmesan Cheese\", \"Black Pepper\"],\r\n    \"instructions\": \"1. Boil the spaghetti. 2. Fry pancetta. 3. Mix eggs and cheese. 4. Combine all ingredients. 5. Add black pepper.\"\r\n}\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:5000/add_recipe",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "5000",
+					"path": [
+						"add_recipe"
+					],
+					"query": [
+						{
+							"key": "",
+							"value": null,
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "See Ingredients",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "http://127.0.0.1:9191/ingredients"
+			},
+			"response": []
+		},
+		{
+			"name": "Add Ingredient",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"ingredient\": \"Salt\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "http://127.0.0.1:5000/ingredients"
+			},
+			"response": []
+		},
+		{
+			"name": "GetIngredientByID",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "http://127.0.0.1:5000/ingredient/1"
+			},
+			"response": []
+		},
+		{
+			"name": "getRecipe",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "http://127.0.0.1:5000/recipes"
+			},
+			"response": []
+		},
+		{
+			"name": "GetGatewayStatus",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "http://127.0.0.1:5000/status"
+			},
+			"response": []
+		},
+		{
+			"name": "GetInfoServiceDiscovery",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "http://127.0.0.1:8001/get_info/IngredientMicroservice"
+			},
+			"response": []
+		},
+		{
+			"name": "AddIngredientsList",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "[\r\n    {\r\n        \"ingredient\": \"Ingredient 1\"\r\n    },\r\n    {\r\n        \"ingredient\": \"Ingredient 2\"\r\n    },\r\n    {\r\n        \"ingredient\": \"Ingredient 3\"\r\n    }\r\n]",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "http://127.0.0.1:5000/add_ingredients"
+			},
+			"response": []
+		},
+		{
+			"name": "GetRecipeByIngredient",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "http://127.0.0.1:5000/recipes/Eggs"
+			},
+			"response": []
+		}
+	]
+}

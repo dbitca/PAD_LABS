@@ -10,9 +10,10 @@ services:
     ports:
       - 9191:9191
     networks:
-      - pad-net
+      pad-net:
+        ipv4_address: 192.168.0.91
     environment:
-      spring.datasource.url: jdbc:postgresql://localhost:5432/ingredients
+      spring.datasource.url: jdbc:postgresql://db:5432/ingredients?createDatabaseIfNotExist=true
       spring.datasource.username: postgres
       spring.datasource.password: postgrespass
       spring.datasource.driverClassName: org.postgresql.Driver
@@ -33,9 +34,10 @@ services:
     ports:
       - 8081:8081
     networks:
-      - pad-net
+      pad-net:
+        ipv4_address: 192.168.0.69
     environment:
-      spring.datasource.url : jdbc:postgresql://localhost:5432/recipes
+      spring.datasource.url : jdbc:postgresql://db:5432/recipes
       spring.datasource.username : postgres
       spring.datasource.password : postgrespass
       spring.jpa.database: postgresql
@@ -46,7 +48,7 @@ services:
       spring.application.name: RecipeMicroservice
 
   gateway:
-      image: gateway:latest
+      image: gateway:env_test
       container_name: "gateway"
       restart: unless-stopped
       depends_on:
@@ -55,8 +57,12 @@ services:
         - RecipeMicroservice
       ports:
         - 5000:5000
+      environment:
+        DISCOVERY_URL: http://service_discovery:8001/
       networks:
-        - pad-net
+        pad-net:
+          ipv4_address: 192.168.0.50
+
 
   service_discovery:
     image: service-discovery:latest
@@ -65,21 +71,27 @@ services:
     ports:
       - 8001:8001
     networks:
-      - pad-net
+      pad-net:
+        ipv4_address: 192.168.0.81
 
   db:
     image: postgres
     restart: always
     environment:
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_USERNAME: postgrespass
+      POSTGRES_PASSWORD: postgrespass
+      POSTGRES_USERNAME: postgres
       POSTGRES_DB: recipes
     ports:
       - 5432:5432
     networks:
-      - pad-net
+      pad-net:
+        ipv4_address: 192.168.0.54
 
 
 networks:
   pad-net:
     driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.0.0/24
