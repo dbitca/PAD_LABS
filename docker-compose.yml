@@ -6,17 +6,17 @@ services:
     restart: unless-stopped
     depends_on:
       - service_discovery
-      - mysqldb
+      - db
     ports:
       - 9191:9191
     networks:
       - pad-net
     environment:
-      spring.datasource.driver-class-name : com.mysql.cj.jdbc.Driver
-      spring.datasource.url : jdbc:mysql://mysqldb:3307/ingredients?createDatabaseIfNotExist=true
-      spring.datasource.username : root
-      spring.datasource.password : root
-      spring.jpa.properties.hibernate.dialect : org.hibernate.dialect.MySQLDialect
+      spring.datasource.url: jdbc:postgresql://localhost:5432/ingredients
+      spring.datasource.username: postgres
+      spring.datasource.password: postgrespass
+      spring.datasource.driverClassName: org.postgresql.Driver
+      spring.jpa.database: postgresql
       spring.jpa.hibernate.ddl-auto : create
       spring.jpa.show-sql : true
       server.port: 9191
@@ -29,17 +29,16 @@ services:
     restart: unless-stopped
     depends_on:
       - service_discovery
-#      - mysqldb
+      - db
     ports:
       - 8081:8081
     networks:
       - pad-net
     environment:
-      spring.datasource.driver-class-name : com.mysql.cj.jdbc.Driver
-      spring.datasource.url : jdbc:mysql://172.30.176.1:3306/recipes?createDatabaseIfNotExist=true
-      spring.datasource.username : root
-      spring.datasource.password : root
-      spring.jpa.properties.hibernate.dialect : org.hibernate.dialect.MySQLDialect
+      spring.datasource.url : jdbc:postgresql://localhost:5432/recipes
+      spring.datasource.username : postgres
+      spring.datasource.password : postgrespass
+      spring.jpa.database: postgresql
       spring.jpa.hibernate.ddl-auto : create
       spring.jpa.show-sql : true
       server.port: 8081
@@ -68,30 +67,18 @@ services:
     networks:
       - pad-net
 
-  mysqldb:
-    image: mysql/mysql-server:latest
-    container_name: MySql
+  db:
+    image: postgres
     restart: always
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USERNAME: postgrespass
+      POSTGRES_DB: recipes
     ports:
-      - 3307:3306
+      - 5432:5432
     networks:
       - pad-net
-    environment:
-      MYSQL_PASSWORD: 12345
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_USER: root
-      MYSQL_DATABASE: recipes
-    command:
-      - --default-authentication-plugin=mysql_native_password
-    volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
-      timeout: 20s
-      retries: 10
 
-volumes:
-  mysql_data:
 
 networks:
   pad-net:
