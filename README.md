@@ -1,9 +1,21 @@
 # PAD_LABS
 This laboratory work comprises a microservice based system for storing ingredients and generating recipes. 
 
-## System Architecture
+## System Architecture (updated)
 
 ![Local Image](images/SysArchitecture.drawio.png)
+
+## Service Boundaries:
+This system is designed to be simple and efficient, focusing on the core functionality of suggesting
+recipes based on user-provided ingredients. Each microservice has a clear and specific role, contributing
+to the overall functionality of the system.
+#### Ingredient Service
+Manages information about ingredients and allows users to add new
+ingredients.
+
+#### Recipe Service
+Manages the recipe database and supports searching for recipes based on
+ingredients.
 
 #### Load balancer: 
 Entry point to the system, distributes incoming traffic across microservices. Ensures High Availability and Load 
@@ -30,7 +42,7 @@ Manages recipe-related data and interacts with its own database. Handles recipe 
 Provides dynamic service registration and discovery. Allows microservices to find and communicate with each other.
 
 ## Ingredient Microservice Endpoints
-#### NOTE: The endpoints enumerated below are the endpoints contained in the POSTMAN collection.
+#### NOTE: The endpoints enumerated below are the endpoints contained in the POSTMAN collection. Further into the implementation of the second laboratory there will be modifications.
 
 ### `GET /status`
 
@@ -43,9 +55,16 @@ Provides dynamic service registration and discovery. Allows microservices to fin
     - "Ingredient Microservice Status: Online"
     - "Recipe Microservice Status: Online"
 
-### `POST /addIngredient`
-- **Description:** Add a single ingredient.
-- **Request Method:** POST
+### `GET /ingredients`
+- **Description:** Get ingredients list
+- **Request Method:** GET
+- **Request Body:** None
+- **Response:**
+  - *Content-Type:* `application/json`
+  - *Body:* An array of ingredients as JSON objects.
+
+  
+### `POST /ingredients`
 - **Request Body:**
     - *Content-Type:* `application/json`
     - *Body Example:*
@@ -56,10 +75,10 @@ Provides dynamic service registration and discovery. Allows microservices to fin
       }
       ```
 - **Response:**
-    - *Content-Type:* `application/json`
-    - *Body:* The added ingredient as a JSON object.
+  - *Content-Type:* `text/plain`
+  - *Body:* "Ingredient added successfully"
 
-### `POST /addIngredients`
+### `POST /add_ingredients`
 
 - **Description:** Add multiple ingredients.
 - **Request Method:** POST
@@ -79,20 +98,10 @@ Provides dynamic service registration and discovery. Allows microservices to fin
       ]
       ```
 - **Response:**
-    - *Content-Type:* `application/json`
-    - *Body:* An array of the added ingredients as JSON objects.
+  - *Content-Type:* `text/plain`
+  - *Body:* "Ingredients added successfully"
 
-### `GET /ingredients`
-
-- **Description:** Get all ingredients.
-- **Request Method:** GET
-- **Request Body:** None
-- **Response:**
-    - *Content-Type:* `application/json`
-    - *Body:* An array of ingredients as JSON objects.
-
-### `GET /ingredient/{id}`
-
+### `GET /ingredient/<id>`
 - **Description:** Get an ingredient by ID.
 - **Request Method:** GET
 - **Request Body:** None
@@ -100,46 +109,20 @@ Provides dynamic service registration and discovery. Allows microservices to fin
     - *Content-Type:* `application/json`
     - *Body:* The ingredient with the specified ID as a JSON object.
 
-### `PUT /update`
-
-- **Description:** Update an existing ingredient.
-- **Request Method:** PUT
-- **Request Body:**
-    - *Content-Type:* `application/json`
-    - *Body Example:*
-      ```json
-      {
-          "id": 1,  // The ID of the ingredient to update
-          "ingredient": "Updated Ingredient"
-      }
-      ```
-- **Response:**
-    - *Content-Type:* `application/json`
-    - *Body:* The updated ingredient as a JSON object.
-
-### `DELETE /delete/{id}`
-
-- **Description:** Delete an ingredient by ID.
-- **Request Method:** DELETE
-- **Request Body:** None
-- **Response:**
-    - *Content-Type:* `text/plain`
-    - *Body:* A string indicating the result of the deletion, e.g., "Ingredient deleted successfully" or an error message.
-
 # Recipe Microservice Endpoints
 
-#### NOTE: The endpoints enumerated below are the endpoints contained in the POSTMAN collection.
+#### NOTE: The endpoints enumerated below are the endpoints contained in the POSTMAN collection. Further into the implementation of the second laboratory there will be modifications.
 
-### `GET /status`
+### `GET /recipes`
 
-- **Description:** Get the service status.
+- **Description:** Get all recipes.
 - **Request Method:** GET
 - **Request Body:** None
 - **Response:**
-  - *Content-Type:* `text/plain`
-  - *Body:* A string indicating the service status, e.g., "Service status: UP"
+  - *Content-Type:* `application/json`
+  - *Body:* An array of recipes as JSON objects.
 
-### `POST /addRecipe`
+### `POST /add_recipe`
 
 - **Description:** Add a new recipe.
 - **Request Method:** POST
@@ -156,28 +139,10 @@ Provides dynamic service registration and discovery. Allows microservices to fin
     }
     ```
 - **Response:**
-  - *Content-Type:* `application/json`
-  - *Body:* The added recipe as a JSON object.
+  - *Content-Type:* `text/plain`
+  - *Body:* Recipe added successfully!
 
-### `GET /recipe/{recipeId}`
-
-- **Description:** Get a recipe by ID.
-- **Request Method:** GET
-- **Request Body:** None
-- **Response:**
-  - *Content-Type:* `application/json`
-  - *Body:* The recipe with the specified ID as a JSON object.
-
-### `GET /recipes`
-
-- **Description:** Get all recipes.
-- **Request Method:** GET
-- **Request Body:** None
-- **Response:**
-  - *Content-Type:* `application/json`
-  - *Body:* An array of recipes as JSON objects.
-
-### `GET /recipes/{ingredient}`
+### `GET /recipes/<ingredient>`
 
 - **Description:** Get recipes by ingredient.
 - **Request Method:** GET
@@ -186,6 +151,15 @@ Provides dynamic service registration and discovery. Allows microservices to fin
   - *Content-Type:* `application/json`
   - *Body:* An array of recipes containing the specified ingredient as JSON objects.
 
+## Tech Stack
+For building microservices, I used Spring Boot. To manage API requests, balance the load on my servers, and help microservices find each other, I used Python, specifically Flask. Both of my databases are PostgreSQL, which is a reliable and high-performance choice.
+
+For keeping track of what's happening in the system and diagnosing issues, I will set up the ELK Stack for logging. 
+It will help me collect and analyze logs effectively.
+
+To make sure all my system parts can talk to each other, I use REST communication. It's a simple and efficient way for my services to exchange data.
+
+## Deployment
 ### Docker Images
 In order to test the application, run the compose file from the PAD_LABORATORIES directory, using the commands:
 ```cmd
