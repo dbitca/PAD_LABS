@@ -25,8 +25,11 @@ def register_service():
     data=request.get_json()
     service_name = data.get('name')
     service_port = data.get('port')
+    service_address = data.get('host')
     service_registry[service_name] = data
-    logger.info(f"Service with name {service_name} and port {service_port} has registered successfully")
+    logger.info(f"Service with name {service_name} and port {service_port} and address {service_address} has "
+                f"registered "
+                f"successfully")
     return jsonify({"message": "Service registered successfully"}), 200
 
 @app.route('/deregister/<string:service_name>', methods=['DELETE'])
