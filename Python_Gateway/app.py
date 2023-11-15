@@ -1,13 +1,19 @@
-from flask import Flask, jsonify, request
+import circuitbreaker
+from circuitbreaker import CircuitBreaker, CircuitBreakerError
+from flask import Flask, jsonify, request, abort
+from pycircuitbreaker import circuit
 from expiringdict import ExpiringDict
 import requests
 import logging
 import os
+from CustomCircuitBreaker import CustomCircuitBreaker
 
 app = Flask(__name__)
 
-INGREDIENT_MICROSERVICE_URL = None
-RECIPE_MICROSERVICE_URL = None
+# circuit_breaker = CustomCircuitBreaker()
+
+# INGREDIENT_MICROSERVICE_URL = None
+# RECIPE_MICROSERVICE_URL = None
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,69 +33,76 @@ ingredient_cache = ExpiringDict(max_len=50, max_age_seconds=600, items=None)
 recipe_cache = ExpiringDict(max_len=50, max_age_seconds=600, items=None)
 
 @app.route('/')
-def hello_world():  # put application's code here
-    return 'Hello World!'
+def home():
+    return 'API Gateway Home'
 
-INGREDIENT_MICROSERVICE_URL = 'http://192.168.0.91:9191'
-RECIPE_MICROSERVICE_URL = 'http://192.168.0.69:8081'
+# INGREDIENT_MICROSERVICE_URL = 'http://192.168.0.91:9191'
+# RECIPE_MICROSERVICE_URL = 'http://192.168.0.69:8081'
     # Execute fetch_microservice_urls function before the first request
-# @app.before_first_request
-# def before_first_request():
-#     fetch_microservice_urls()
+@app.before_first_request
+def before_first_request():
+    fetch_microservice_urls()
 
-# def fetch_microservice_urls():
-#     global INGREDIENT_MICROSERVICE_URL, RECIPE_MICROSERVICE_URL
-#
-#     service_discovery_url = "http://192.168.0.81:8001"
-#
-#
-#     ingredient_status = fetch_service_info("IngredientMicroservice", service_discovery_url)
-#     if ingredient_status.get("status") == "online":
-#         INGREDIENT_MICROSERVICE_URL = ingredient_status.get("url")
-#
-#         recipe_status = fetch_service_info("RecipeMicroservice", service_discovery_url)
-#     if recipe_status.get("status") == "online":
-#         RECIPE_MICROSERVICE_URL = recipe_status.get("url")
-#
-#         logger.info("Microservice URLs set")
+def fetch_microservice_urls():
+    global INGREDIENT_MICROSERVICE_URL, RECIPE_MICROSERVICE_URL
+
+    service_discovery_url = "http://192.168.0.81:8001"
 
 
+    ingredient_status = fetch_service_info("IngredientMicroservice", service_discovery_url)
+    if ingredient_status.get("status") == "online":
+        INGREDIENT_MICROSERVICE_URL = ingredient_status.get("url")
 
-# def fetch_service_info(service_name, service_discovery_url):
-#     service_info_url = f"{service_discovery_url}/get_info/{service_name}"
-#
-#     response = requests.get(service_info_url)
-#     if response.status_code == 200:
-#         service_info = response.json()
-#         logger.info(service_info)
-#
-#
-#         service_name = service_info['name']
-#         service_port = service_info['port']
-#         service_url = f"http://127.0.0.1:{service_port}"
-#
-#         return {"status": "online", "info": service_info, "url": service_url}
-#     else:
-#         return {"status": "offline", "info": {}, "url": None}
+        recipe_status = fetch_service_info("RecipeMicroservice", service_discovery_url)
+    if recipe_status.get("status") == "online":
+        RECIPE_MICROSERVICE_URL = recipe_status.get("url")
 
+        logger.info("Microservice URLs set")
+
+
+
+def fetch_service_info(service_name, service_discovery_url):
+    service_info_url = f"{service_discovery_url}/get_info/{service_name}"
+
+    response = requests.get(service_info_url)
+    if response.status_code == 200:
+        service_info = response.json()
+        logger.info(service_info)
+
+
+        service_name = service_info['name']
+        service_port = service_info['port']
+        service_host = service_info['host']
+        service_url = f"http://{service_host}:{service_port}"
+
+        return {"status": "online", "info": service_info, "url": service_url}
+    else:
+        return {"status": "offline", "info": {}, "url": None}
+@CustomCircuitBreaker()
 @app.route('/status', methods=['GET'])
 def application_status():
-    ingredient_response = requests.get(f"{INGREDIENT_MICROSERVICE_URL}/status")
-    recipe_response = requests.get(f"{RECIPE_MICROSERVICE_URL}/status")
+    try:
+        ingredient_response = requests.get(f"{INGREDIENT_MICROSERVICE_URL}/status")
+        recipe_response = requests.get(f"{RECIPE_MICROSERVICE_URL}/status")
 
-    ingredient_status = "Online" if ingredient_response.status_code == 200 else "Offline"
-    recipe_status = "Online" if recipe_response.status_code == 200 else "Offline"
+        ingredient_status = "Online" if ingredient_response.status_code == 200 else "Offline"
+        recipe_status = "Online" if recipe_response.status_code == 200 else "Offline"
 
-    status_info = {
+        status_info = {
         "Ingredient Microservice Status": ingredient_status,
         "Recipe Microservice Status": recipe_status
-    }
-
-    return jsonify(status_info)
+        }
+        return jsonify(status_info)
+    except CircuitBreakerError as e:
+        error_message = f"Circuit breaker active: {e}"
+        abort(503, description=error_message)
+    # except requests.RequestException as e:
+    #     error_message = f"Failed to call external service"
+    #     abort(500, description = error_message)
 
 #Controller to access the ingredient endpoints
 @app.route('/ingredients', methods = ['GET'])
-
+# @circuit(breaker=CustomCircuitBreaker)
 def get_ingredients():
     url = f"{INGREDIENT_MICROSERVICE_URL}/ingredients"
     response = requests.get(url)
@@ -102,6 +115,7 @@ def get_ingredients():
 
 
 @app.route('/ingredients', methods=['POST'])
+# @circuit(breaker=CustomCircuitBreaker)
 def add_ingredient():
     url = f"{INGREDIENT_MICROSERVICE_URL}/addIngredient"
     request_data = request.get_json()
@@ -115,6 +129,7 @@ def add_ingredient():
     return 'Ingredients added successfully!'
 
 @app.route('/add_ingredients', methods=['POST'])
+# @circuit(breaker=CustomCircuitBreaker)
 def add_ingredients():
     url = f"{INGREDIENT_MICROSERVICE_URL}/addIngredients"
     request_data = request.get_json()
@@ -127,6 +142,7 @@ def add_ingredients():
         return jsonify({"error": "Failed to add ingredients"}), response.status_code
 
 @app.route('/ingredient/<id>', methods=['GET'])
+# @circuit(breaker=CustomCircuitBreaker)
 def get_ingredeint_by_id(id):
     cache_key = f'ingredient_{id}'
     cached_data = ingredient_cache.get(cache_key)
@@ -159,6 +175,7 @@ def get_ingredeint_by_id(id):
 #     return jsonify(response.json()), response.status_code
 
 @app.route('/recipes', methods=['GET'])
+# @circuit(breaker=CustomCircuitBreaker)
 def get_recipes():
     url = f"{RECIPE_MICROSERVICE_URL}/recipes"
     response = requests.get(url)
@@ -170,6 +187,7 @@ def get_recipes():
         return jsonify({"error": "Failed to retrieve recipes"}), response.status_code
 
 @app.route('/recipes/<ingredient>', methods=['GET'])
+# @circuit(breaker=CustomCircuitBreaker)
 def get_recipe_by_ingredient(ingredient):
     cache_key = f'recipe{ingredient}'
     cached_data = recipe_cache.get(cache_key)
@@ -189,6 +207,7 @@ def get_recipe_by_ingredient(ingredient):
             return jsonify(response.json()), response.status_code
 
 @app.route('/add_recipe', methods=['POST'])
+# @circuit(breaker=CustomCircuitBreaker)
 def add_recipe():
     url = f"{RECIPE_MICROSERVICE_URL}/addRecipe"
     request_data = request.get_json()

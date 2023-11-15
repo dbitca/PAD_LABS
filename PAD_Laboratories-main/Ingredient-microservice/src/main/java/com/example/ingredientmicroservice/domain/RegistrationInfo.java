@@ -19,8 +19,11 @@ public class RegistrationInfo {
         this.port = port;
     }
 
+    public void getHost(String host){
+        this.host = host;
+    }
+
     private String name;
     private int port;
-
-
+    private String host;
 }
