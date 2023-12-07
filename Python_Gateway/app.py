@@ -7,6 +7,10 @@ import requests
 import logging
 import os
 from CustomCircuitBreaker import CustomCircuitBreaker
+from collections import deque
+import functools
+import urllib3
+import time
 
 app = Flask(__name__)
 
@@ -33,44 +37,96 @@ recipe_cache = ExpiringDict(max_len=50, max_age_seconds=600, items=None)
 def home():
     return 'API Gateway Home'
 
-@app.before_first_request
-def before_first_request():
-    fetch_microservice_urls()
+global INGREDIENT_MICROSERVICE_URL, RECIPE_MICROSERVICE_URL
+INGREDIENT_MICROSERVICE_URL = "http://127.0.0.1:9191"
+class CircuitBreaker:
 
-def fetch_microservice_urls():
-    global INGREDIENT_MICROSERVICE_URL, RECIPE_MICROSERVICE_URL
+    def __init__(self, threshold, timeout):
+        self.threshold = threshold
+        self.timeout = timeout
+        self.reroutes = deque(maxlen=threshold)
+        self.last_tripped = None
 
-    service_discovery_url = "http://192.168.0.81:8001"
+    def __call__(self, func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                if self.is_open:
+                    logger.info("CircuitBreaker is now open")
+                    raise CircuitBreakerOpenError("Circuit breaker is open")
+                self.reroutes.append(time.time())
+                return func(*args, **kwargs)
+            except Exception as e:
+                if self.should_trip(e):
+                    self.trip()
+                raise e
+        return wrapper
 
-    ingredient_status = fetch_service_info("IngredientMicroservice", service_discovery_url)
-    if ingredient_status.get("status") == "online":
-        INGREDIENT_MICROSERVICE_URL = ingredient_status.get("url")
+    @property
+    def is_open(self):
+        return self.last_tripped and time.time() - self.last_tripped < self.timeout
 
-        recipe_status = fetch_service_info("RecipeMicroservice", service_discovery_url)
-    if recipe_status.get("status") == "online":
-        RECIPE_MICROSERVICE_URL = recipe_status.get("url")
+    def trip(self):
+        self.last_tripped = time.time()
 
-        logger.info("Microservice URLs set")
+    def should_trip(self, exception):
+        if isinstance(exception, requests.exceptions.ConnectionError):
+            print(f"ConnectionError occurred: {exception}")
+        print(f"Reroutes: {list(self.reroutes)}")
+        print(f"Last Tripped: {self.last_tripped}")
+        return (
+            isinstance(exception, requests.exceptions.ConnectionError)
+            and ((len(self.reroutes) >= self.threshold
+            and time.time() - self.reroutes[0] <= self.timeout)
+            or len(self.reroutes) >= 3
+        )
+    )
+class CircuitBreakerOpenError(Exception):
+    pass
 
-def fetch_service_info(service_name, service_discovery_url):
-    service_info_url = f"{service_discovery_url}/get_info/{service_name}"
+# @app.before_first_request
+# def before_first_request():
+#     fetch_microservice_urls()
 
-    response = requests.get(service_info_url)
-    if response.status_code == 200:
-        service_info = response.json()
-        logger.info(service_info)
+# def fetch_microservice_urls():
+#     global INGREDIENT_MICROSERVICE_URL, RECIPE_MICROSERVICE_URL
+#
+#     service_discovery_url = "http://192.168.0.81:8001"
+#
+#     ingredient_status = fetch_service_info("IngredientMicroservice", service_discovery_url)
+#     if ingredient_status.get("status") == "online":
+#         INGREDIENT_MICROSERVICE_URL = ingredient_status.get("url")
+#
+#         recipe_status = fetch_service_info("RecipeMicroservice", service_discovery_url)
+#     if recipe_status.get("status") == "online":
+#         RECIPE_MICROSERVICE_URL = recipe_status.get("url")
+#
+#         logger.info("Microservice URLs set")
+#
+# def fetch_service_info(service_name, service_discovery_url):
+#     service_info_url = f"{service_discovery_url}/get_info/{service_name}"
+#
+#     response = requests.get(service_info_url)
+#     if response.status_code == 200:
+#         service_info = response.json()
+#         logger.info(service_info)
+#
+#
+#         service_name = service_info['name']
+#         service_port = service_info['port']
+#         service_host = service_info['host']
+#         service_url = f"http://{service_host}:{service_port}"
+#
+#         return {"status": "online", "info": service_info, "url": service_url}
+#     else:
+#         return {"status": "offline", "info": {}, "url": None}
 
+RECIPE_MICROSERVICE_URL = "http://127.0.0.1:8082"
 
-        service_name = service_info['name']
-        service_port = service_info['port']
-        service_host = service_info['host']
-        service_url = f"http://{service_host}:{service_port}"
+circuit_breaker = CircuitBreaker(threshold=2, timeout=30)
 
-        return {"status": "online", "info": service_info, "url": service_url}
-    else:
-        return {"status": "offline", "info": {}, "url": None}
-@CustomCircuitBreaker()
 @app.route('/status', methods=['GET'])
+@circuit_breaker
 def application_status():
     try:
         ingredient_response = requests.get(f"{INGREDIENT_MICROSERVICE_URL}/status")
@@ -84,15 +140,14 @@ def application_status():
         "Recipe Microservice Status": recipe_status
         }
         return jsonify(status_info)
-    except CircuitBreakerError as e:
-        error_message = f"Circuit breaker active: {e}"
-        abort(503, description=error_message)
-    except requests.RequestException as e:
-        error_message = f"Failed to call external service"
-        abort(500, description = error_message)
+    except Exception as e:
+        print(f"Exception occurred: {type(e).__name__}: {e}")
+        if circuit_breaker.should_trip(e):
+            circuit_breaker.trip()
+        raise e
 
-@CustomCircuitBreaker()
 @app.route('/ingredients', methods = ['GET'])
+@circuit_breaker
 def get_ingredients():
     try:
         url = f"{INGREDIENT_MICROSERVICE_URL}/ingredients"
@@ -103,15 +158,14 @@ def get_ingredients():
             return jsonify(ingredients)
         else:
             return jsonify({"error": "Failed to retrieve ingredients"}), response.status_code
-    except CircuitBreakerError as e:
-        error_message = f"Circuit breaker active: {e}"
-        abort(503, description=error_message)
-    except requests.RequestException as e:
-        error_message = f"Failed to call external service"
-        abort(500, description = error_message)
+    except Exception as e:
+        print(f"Exception occurred: {type(e).__name__}: {e}")
+        if circuit_breaker.should_trip(e):
+            circuit_breaker.trip()
+        raise e
 
-@CustomCircuitBreaker()
 @app.route('/ingredients', methods=['POST'])
+@circuit_breaker
 def add_ingredient():
     try:
         url = f"{INGREDIENT_MICROSERVICE_URL}/addIngredient"
@@ -124,15 +178,14 @@ def add_ingredient():
         print(f'Added ingredient: {ingredient_name}. Response: {response.json()}, Status code: {response.status_code}')
 
         return 'Ingredients added successfully!'
-    except CircuitBreakerError as e:
-        error_message = f"Circuit breaker active: {e}"
-        abort(503, description=error_message)
-    except requests.RequestException as e:
-        error_message = f"Failed to call external service"
-        abort(500, description = error_message)
+    except Exception as e:
+        print(f"Exception occurred: {type(e).__name__}: {e}")
+        if circuit_breaker.should_trip(e):
+            circuit_breaker.trip()
+        raise e
 
-@CustomCircuitBreaker()
 @app.route('/add_ingredients', methods=['POST'])
+@circuit_breaker
 def add_ingredients():
     try:
         url = f"{INGREDIENT_MICROSERVICE_URL}/addIngredients"
@@ -144,15 +197,14 @@ def add_ingredients():
             return jsonify({"message": "Ingredients added successfully!"})
         else:
             return jsonify({"error": "Failed to add ingredients"}), response.status_code
-    except CircuitBreakerError as e:
-        error_message = f"Circuit breaker active: {e}"
-        abort(503, description=error_message)
-    except requests.RequestException as e:
-        error_message = f"Failed to call external service"
-        abort(500, description = error_message)
+    except Exception as e:
+        print(f"Exception occurred: {type(e).__name__}: {e}")
+        if circuit_breaker.should_trip(e):
+            circuit_breaker.trip()
+        raise e
 
-@CustomCircuitBreaker()
 @app.route('/ingredient/<id>', methods=['GET'])
+@circuit_breaker
 def get_ingredeint_by_id(id):
     try:
         cache_key = f'ingredient_{id}'
@@ -171,14 +223,13 @@ def get_ingredeint_by_id(id):
                 return jsonify(ingredient), response.status_code
             else:
                 return jsonify({"error": "Failed to retrieve ingredient"}), response.status_code
-    except CircuitBreakerError as e:
-        error_message = f"Circuit breaker active: {e}"
-        abort(503, description=error_message)
-    except requests.RequestException as e:
-        error_message = f"Failed to call external service"
-        abort(500, description = error_message)
-@CustomCircuitBreaker()
+    except Exception as e:
+        print(f"Exception occurred: {type(e).__name__}: {e}")
+        if circuit_breaker.should_trip(e):
+            circuit_breaker.trip()
+        raise e
 @app.route('/recipes', methods=['GET'])
+@circuit_breaker
 def get_recipes():
     try:
         url = f"{RECIPE_MICROSERVICE_URL}/recipes"
@@ -189,14 +240,14 @@ def get_recipes():
             return jsonify(recipes)
         else:
             return jsonify({"error": "Failed to retrieve recipes"}), response.status_code
-    except CircuitBreakerError as e:
-        error_message = f"Circuit breaker active: {e}"
-        abort(503, description=error_message)
-    except requests.RequestException as e:
-        error_message = f"Failed to call external service"
-        abort(500, description = error_message)
-@CustomCircuitBreaker()
+    except Exception as e:
+        print(f"Exception occurred: {type(e).__name__}: {e}")
+        if circuit_breaker.should_trip(e):
+            circuit_breaker.trip()
+        raise e
+
 @app.route('/recipes/<ingredient>', methods=['GET'])
+@circuit_breaker
 def get_recipe_by_ingredient(ingredient):
     try:
         cache_key = f'recipe{ingredient}'
@@ -215,15 +266,14 @@ def get_recipe_by_ingredient(ingredient):
                 return jsonify(recipe)
             else:
                 return jsonify(response.json()), response.status_code
-    except CircuitBreakerError as e:
-        error_message = f"Circuit breaker active: {e}"
-        abort(503, description=error_message)
-    except requests.RequestException as e:
-        error_message = f"Failed to call external service"
-        abort(500, description = error_message)
+    except Exception as e:
+        print(f"Exception occurred: {type(e).__name__}: {e}")
+        if circuit_breaker.should_trip(e):
+            circuit_breaker.trip()
+        raise e
 
-@CustomCircuitBreaker()
 @app.route('/add_recipe', methods=['POST'])
+@circuit_breaker
 def add_recipe():
     try:
         url = f"{RECIPE_MICROSERVICE_URL}/addRecipe"
@@ -232,12 +282,11 @@ def add_recipe():
         print(f'Added recipe. Response:{response.json()}, Status code: {response.status_code}')
 
         return 'Recipe added successfully!'
-    except CircuitBreakerError as e:
-        error_message = f"Circuit breaker active: {e}"
-        abort(503, description=error_message)
-    except requests.RequestException as e:
-        error_message = f"Failed to call external service"
-        abort(500, description = error_message)
+    except Exception as e:
+        print(f"Exception occurred: {type(e).__name__}: {e}")
+        if circuit_breaker.should_trip(e):
+            circuit_breaker.trip()
+        raise e
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0')
