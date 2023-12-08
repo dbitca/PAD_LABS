@@ -58,6 +58,11 @@ public class IngredientsController {
     @Qualifier("taskExecutor")
     private ThreadPoolTaskExecutor taskExecutor;
 
+    @GetMapping("/")
+    public String returnHello(){
+        logger.info("Received reroute from NGINX");
+        return("This is a reroute from NGINX");
+    }
     @PostMapping("/addIngredient")
     public Ingredients addIngredient(@RequestBody Ingredients ingredientEntity) throws TimeoutException {
         logger.info("Received a request to add an ingredient.");

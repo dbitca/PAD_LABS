@@ -1,10 +1,7 @@
 FROM maven:3.8.3-openjdk-17 AS build
-COPY src PAD_Laboratories_secondary/Ingredient-microservice/src
-COPY pom.xml PAD_Laboratories_secondary/Ingredient-microservice/pom.xml
+FROM openjdk:17-jdk-alpine
 
-RUN mvn -f PAD_Laboratories_secondary/Ingredient-microservice/pom.xml clean
-
+ARG JAR_FILE=target/*.jar
+COPY ./target/Ingredient-microservice-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8081
-
-RUN ["ls"]
-RUN ["java","-jar","target/Ingredient-microservice-0.0.1-SNAPSHOT.jar"]
+ENTRYPOINT ["java","-jar","/app.jar"]

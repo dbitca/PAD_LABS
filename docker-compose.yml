@@ -1,14 +1,16 @@
 version: '3'
 services:
-  IngredientMicroservice:
-    image: dbitca785/ingredient_service:tagname
-    container_name: IngredientMicroservice
+  ingredient-microservice-1:
+#    image: dbitca785/ingredient_service:test_1
+
+    build: ./PAD_Laboratories-main/Ingredient-microservice/
+    container_name: ingredient-microservice-1
     restart: unless-stopped
     depends_on:
       - service_discovery
       - db
     ports:
-      - 9191
+      - 9191:9191
     networks:
       pad-net:
         ipv4_address: 192.168.0.91
@@ -20,13 +22,41 @@ services:
       spring.jpa.database: postgresql
       spring.jpa.hibernate.ddl-auto : create
       spring.jpa.show-sql : true
+      server.address: ingredient-microservice-1
       server.port: 9191
       service.discovery.url: http://service_discovery:8001/
-      spring.application.name: IngredientMicroservice
+      spring.application.name: ingredient-microservice-1
 
-  RecipeMicroservice:
-    image: dbitca785/recipe_service:tagname
-    container_name: RecipeMicroservice
+  ingredient-microservice-2:
+#    image: dbitca785/ingredient_service:test_2
+    build: ./PAD_Laboratories-main/Ingredient-microservice/
+    container_name: ingredient-microservice-2
+    restart: unless-stopped
+    depends_on:
+      - service_discovery
+      - db
+    ports:
+      - 9192:9192
+    networks:
+      pad-net:
+        ipv4_address: 192.168.0.92
+    environment:
+      spring.datasource.url: jdbc:postgresql://db:5432/ingredients?createDatabaseIfNotExist=true
+      spring.datasource.username: postgres
+      spring.datasource.password: postgrespass
+      spring.datasource.driverClassName: org.postgresql.Driver
+      spring.jpa.database: postgresql
+      spring.jpa.hibernate.ddl-auto : create
+      spring.jpa.show-sql : true
+      server.address: ingredient-microservice-2
+      server.port: 9192
+      service.discovery.url: http://service_discovery:8001/
+      spring.application.name: ingredient-microservice-2
+
+  recipe-microservice:
+#    image: dbitca785/recipe_service:latest
+    build: ./PAD_Laboratories_secondary/Ingredient-microservice/
+    container_name: recipe-microservice
     restart: unless-stopped
     depends_on:
       - service_discovery
@@ -43,30 +73,39 @@ services:
       spring.jpa.database: postgresql
       spring.jpa.hibernate.ddl-auto : create
       spring.jpa.show-sql : true
+      server.address: recipe-microservice
       server.port: 8081
       service.discovery.url: http://service_discovery:8001/
-      spring.application.name: RecipeMicroservice
+      spring.application.name: recipe-microservice
 
   gateway:
-      image: gateway:env_test
-      container_name: "gateway"
+#      image: gateway:test_1
+      build: ./Python_Gateway/
+      container_name: gateway
       restart: unless-stopped
       depends_on:
         - service_discovery
-        - IngredientMicroservice
-        - RecipeMicroservice
+        - ingredient-microservice-1
+        - ingredient-microservice-2
+        - recipe-microservice
       ports:
         - 5000:5000
       environment:
-        DISCOVERY_URL: http://service_discovery:8001/
+        DISCOVERY_URL: http://service_discovery:8001
+#        INGREDIENT_MICROSERVICE_URL1: http://nginx:80
+#        INGREDIENT_MICROSERVICE_URL2: http://nginx:80
+        INGREDIENT_MICROSERVICE_URL1: http://ingredient-microservice-1:9191
+        INGREDIENT_MICROSERVICE_URL2: http://ingredient-microservice-2:9192
+        RECIPE_MICROSERVICE_URL: http://recipe-microservice:8081
       networks:
         pad-net:
           ipv4_address: 192.168.0.50
 
 
   service_discovery:
-    image: service-discovery:latest
-    container_name: "service_discovery"
+#    image: service-discovery:test_1
+    build: ./Python_Service_Discovery/
+    container_name: service_discovery
     restart: unless-stopped
     ports:
       - 8001:8001
@@ -87,6 +126,18 @@ services:
       pad-net:
         ipv4_address: 192.168.0.54
 
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    volumes:
+      - .nginx/nginx.conf/nginx.conf:/nginx/nginx.conf:ro
+    ports:
+      - 80:80
+    depends_on:
+      - ingredient-microservice-1
+      - ingredient-microservice-2
+    networks:
+      - pad-net
 
 networks:
   pad-net:

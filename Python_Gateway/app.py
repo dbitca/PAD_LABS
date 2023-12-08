@@ -1,15 +1,10 @@
-import circuitbreaker
-from circuitbreaker import CircuitBreaker, CircuitBreakerError
 from flask import Flask, jsonify, request, abort
-from pycircuitbreaker import circuit
 from expiringdict import ExpiringDict
 import requests
 import logging
 import os
-from CustomCircuitBreaker import CustomCircuitBreaker
 from collections import deque
 import functools
-import urllib3
 import time
 
 app = Flask(__name__)
@@ -37,10 +32,21 @@ recipe_cache = ExpiringDict(max_len=50, max_age_seconds=600, items=None)
 def home():
     return 'API Gateway Home'
 
-global INGREDIENT_MICROSERVICE_URL, RECIPE_MICROSERVICE_URL
-INGREDIENT_MICROSERVICE_URL = "http://127.0.0.1:9191"
-class CircuitBreaker:
+global INGREDIENT_MICROSERVICE_URL1, INGREDIENT_MICROSERVICE_URL2, RECIPE_MICROSERVICE_URL
+INGREDIENT_MICROSERVICE_URL1 = os.environ.get('INGREDIENT_MICROSERVICE_URL1')
+INGREDIENT_MICROSERVICE_URL2 = os.environ.get('INGREDIENT_MICROSERVICE_URL2')
+RECIPE_MICROSERVICE_URL = os.environ.get('RECIPE_MICROSERVICE_URL')
 
+
+print(f"Ingredient 1 URL {INGREDIENT_MICROSERVICE_URL1}")
+print(f"Ingredient 2 URL {INGREDIENT_MICROSERVICE_URL2}")
+
+MICROSERVICE_URL = [
+    INGREDIENT_MICROSERVICE_URL1,
+    INGREDIENT_MICROSERVICE_URL2
+]
+
+class CircuitBreaker:
     def __init__(self, threshold, timeout):
         self.threshold = threshold
         self.timeout = timeout
@@ -84,6 +90,16 @@ class CircuitBreaker:
 class CircuitBreakerOpenError(Exception):
     pass
 
+class RoundRobinLoadBalancer:
+    def __init__(self, services):
+        self.services = services
+        self.current_index = 0
+
+    def get_next_service(self):
+        service = self.services[self.current_index]
+        self.current_index = (self.current_index + 1) % len(self.services)
+        return service
+
 # @app.before_first_request
 # def before_first_request():
 #     fetch_microservice_urls()
@@ -121,30 +137,35 @@ class CircuitBreakerOpenError(Exception):
 #     else:
 #         return {"status": "offline", "info": {}, "url": None}
 
-RECIPE_MICROSERVICE_URL = "http://127.0.0.1:8082"
-
 circuit_breaker = CircuitBreaker(threshold=2, timeout=30)
+
+load_balancer = RoundRobinLoadBalancer(MICROSERVICE_URL)
 
 @app.route('/status', methods=['GET'])
 @circuit_breaker
 def application_status():
     try:
-        ingredient_response = requests.get(f"{INGREDIENT_MICROSERVICE_URL}/status")
+
+        ingredient_response1 = requests.get(f"{INGREDIENT_MICROSERVICE_URL1}/status")
+        ingredient_response2 = requests.get(f"{INGREDIENT_MICROSERVICE_URL2}/status")
         recipe_response = requests.get(f"{RECIPE_MICROSERVICE_URL}/status")
 
-        ingredient_status = "Online" if ingredient_response.status_code == 200 else "Offline"
+        ingredient_status1 = "Online" if ingredient_response1.status_code == 200 else "Offline"
+        ingredient_status2 = "Online" if ingredient_response2.status_code == 200 else "Offline"
         recipe_status = "Online" if recipe_response.status_code == 200 else "Offline"
 
         status_info = {
-        "Ingredient Microservice Status": ingredient_status,
+        "Ingredient Microservice 1 Status": ingredient_status1,
+        "Ingredient Microservice 2 Status": ingredient_status2,
         "Recipe Microservice Status": recipe_status
         }
         return jsonify(status_info)
     except Exception as e:
-        print(f"Exception occurred: {type(e).__name__}: {e}")
+
         if circuit_breaker.should_trip(e):
             circuit_breaker.trip()
-        raise e
+        # raise e
+        return(f"Exception occurred: {type(e).__name__}: {e}")
 
 @app.route('/ingredients', methods = ['GET'])
 @circuit_breaker
@@ -289,4 +310,4 @@ def add_recipe():
         raise e
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, port=5000, host='0.0.0.0')
