@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    scrape_interval: 15s
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['localhost:9090', 'ingredient-microservice-1:9191', 'ingredient-microservice-2:9192',
+        'recipe-microservice:8081']

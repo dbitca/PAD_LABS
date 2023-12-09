@@ -78,6 +78,32 @@ services:
       service.discovery.url: http://service_discovery:8001/
       spring.application.name: recipe-microservice
 
+#  recipe-microservice-2:
+#    #    image: dbitca785/recipe_service:latest
+#    build: ./PAD_Laboratories_secondary/Ingredient-microservice/
+#    container_name: recipe-microservice-2
+#    restart: unless-stopped
+#    depends_on:
+#      - service_discovery
+#      - db
+#    ports:
+#      - 8083:8083
+#    networks:
+#      pad-net:
+#        ipv4_address: 192.168.0.69
+#    environment:
+#      spring.datasource.url : jdbc:postgresql://db:5432/recipes
+#      spring.datasource.username : postgres
+#      spring.datasource.password : postgrespass
+#      spring.jpa.database: postgresql
+#      spring.jpa.hibernate.ddl-auto : create
+#      spring.jpa.show-sql : true
+#      server.address: recipe-microservice-2
+#      server.port: 8082
+#      service.discovery.url: http://service_discovery:8001/
+#      spring.application.name: recipe-microservice-2
+
+
   gateway:
 #      image: gateway:test_1
       build: ./Python_Gateway/
@@ -88,15 +114,15 @@ services:
         - ingredient-microservice-1
         - ingredient-microservice-2
         - recipe-microservice
+#        - recipe-microservice-2
       ports:
         - 5000:5000
       environment:
         DISCOVERY_URL: http://service_discovery:8001
-#        INGREDIENT_MICROSERVICE_URL1: http://nginx:80
-#        INGREDIENT_MICROSERVICE_URL2: http://nginx:80
         INGREDIENT_MICROSERVICE_URL1: http://ingredient-microservice-1:9191
         INGREDIENT_MICROSERVICE_URL2: http://ingredient-microservice-2:9192
         RECIPE_MICROSERVICE_URL: http://recipe-microservice:8081
+#        RECIPE_MICROSERVICE_URL2: http://recipe-microservice-2:8082
       networks:
         pad-net:
           ipv4_address: 192.168.0.50
@@ -126,18 +152,36 @@ services:
       pad-net:
         ipv4_address: 192.168.0.54
 
-  nginx:
-    image: nginx:latest
-    container_name: nginx
-    volumes:
-      - .nginx/nginx.conf/nginx.conf:/nginx/nginx.conf:ro
-    ports:
-      - 80:80
+
+  prometheus:
+    image: prom/prometheus:v2.47.2
     depends_on:
       - ingredient-microservice-1
       - ingredient-microservice-2
+      - recipe-microservice
+#      - recipe-microservice-2
+    command:
+     - '--config.file=/etc/prometheus/prometheus.yml'
+    volumes:
+      - ./prometheus/prometheus.yml:/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
     networks:
-      - pad-net
+      pad-net:
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - 3000:3000
+    depends_on:
+      - prometheus
+    volumes:
+      - ./grafana:/grafana/provisioning/
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      pad-net:
 
 networks:
   pad-net:

@@ -35,15 +35,21 @@ def home():
 global INGREDIENT_MICROSERVICE_URL1, INGREDIENT_MICROSERVICE_URL2, RECIPE_MICROSERVICE_URL
 INGREDIENT_MICROSERVICE_URL1 = os.environ.get('INGREDIENT_MICROSERVICE_URL1')
 INGREDIENT_MICROSERVICE_URL2 = os.environ.get('INGREDIENT_MICROSERVICE_URL2')
-RECIPE_MICROSERVICE_URL = os.environ.get('RECIPE_MICROSERVICE_URL')
+RECIPE_MICROSERVICE_URL1 = os.environ.get('RECIPE_MICROSERVICE_URL')
+# RECIPE_MICROSERVICE_URL1 = os.environ.get('RECIPE_MICROSERVICE_URL1')
+# RECIPE_MICROSERVICE_URL2 = os.environ.get('RECIPE_MICROSERVICE_URL2')
 
 
-print(f"Ingredient 1 URL {INGREDIENT_MICROSERVICE_URL1}")
-print(f"Ingredient 2 URL {INGREDIENT_MICROSERVICE_URL2}")
+# print(f"Recipe 1 URL {RECIPE_MICROSERVICE_URL1}")
+# print(f"Recipe 2 URL {RECIPE_MICROSERVICE_URL2}")
 
-MICROSERVICE_URL = [
+INGREDIENT_MICROSERVICE_URL = [
     INGREDIENT_MICROSERVICE_URL1,
     INGREDIENT_MICROSERVICE_URL2
+]
+
+RECIPE_MICROSERVICE_URL = [
+    RECIPE_MICROSERVICE_URL1
 ]
 
 class CircuitBreaker:
@@ -76,12 +82,16 @@ class CircuitBreaker:
         self.last_tripped = time.time()
 
     def should_trip(self, exception):
-        if isinstance(exception, requests.exceptions.ConnectionError):
-            print(f"ConnectionError occurred: {exception}")
+        if isinstance(exception, (requests.exceptions.RequestException, NoHealthyServiceError)):
+            print(f"Error occurred: {exception}")
+
+        if hasattr(exception, 'response') and exception.response is not None:
+            return 500 <= exception.response.status_code < 600
+
         print(f"Reroutes: {list(self.reroutes)}")
         print(f"Last Tripped: {self.last_tripped}")
         return (
-            isinstance(exception, requests.exceptions.ConnectionError)
+            isinstance(exception, (requests.exceptions.RequestException, NoHealthyServiceError))
             and ((len(self.reroutes) >= self.threshold
             and time.time() - self.reroutes[0] <= self.timeout)
             or len(self.reroutes) >= 3
@@ -90,78 +100,66 @@ class CircuitBreaker:
 class CircuitBreakerOpenError(Exception):
     pass
 
-class RoundRobinLoadBalancer:
+class NoHealthyServiceError(Exception):
+    pass
+class LoadBalancer:
     def __init__(self, services):
         self.services = services
         self.current_index = 0
 
     def get_next_service(self):
-        service = self.services[self.current_index]
-        self.current_index = (self.current_index + 1) % len(self.services)
-        return service
+        initial_index = self.current_index
+        attempts = 0
 
-# @app.before_first_request
-# def before_first_request():
-#     fetch_microservice_urls()
+        while attempts < len(self.services):
+            service = self.services[self.current_index]
+            try:
+                response = requests.get(f"{service}/status")
 
-# def fetch_microservice_urls():
-#     global INGREDIENT_MICROSERVICE_URL, RECIPE_MICROSERVICE_URL
-#
-#     service_discovery_url = "http://192.168.0.81:8001"
-#
-#     ingredient_status = fetch_service_info("IngredientMicroservice", service_discovery_url)
-#     if ingredient_status.get("status") == "online":
-#         INGREDIENT_MICROSERVICE_URL = ingredient_status.get("url")
-#
-#         recipe_status = fetch_service_info("RecipeMicroservice", service_discovery_url)
-#     if recipe_status.get("status") == "online":
-#         RECIPE_MICROSERVICE_URL = recipe_status.get("url")
-#
-#         logger.info("Microservice URLs set")
-#
-# def fetch_service_info(service_name, service_discovery_url):
-#     service_info_url = f"{service_discovery_url}/get_info/{service_name}"
-#
-#     response = requests.get(service_info_url)
-#     if response.status_code == 200:
-#         service_info = response.json()
-#         logger.info(service_info)
-#
-#
-#         service_name = service_info['name']
-#         service_port = service_info['port']
-#         service_host = service_info['host']
-#         service_url = f"http://{service_host}:{service_port}"
-#
-#         return {"status": "online", "info": service_info, "url": service_url}
-#     else:
-#         return {"status": "offline", "info": {}, "url": None}
+                if response.status_code == 200:
+                    return service
+            except requests.exceptions.RequestException as e:
+            # Log or handle the exception if needed
+                pass
+
+            self.current_index = (self.current_index + 1) % len(self.services)
+            attempts += 1
+
+        # Reset current_index to the initial value
+        self.current_index = initial_index
+        raise NoHealthyServiceError("No healthy services available")
 
 circuit_breaker = CircuitBreaker(threshold=2, timeout=30)
 
-load_balancer = RoundRobinLoadBalancer(MICROSERVICE_URL)
+ingredient_load_balancer = LoadBalancer(INGREDIENT_MICROSERVICE_URL)
+recipe_load_balancer = LoadBalancer(RECIPE_MICROSERVICE_URL)
 
 @app.route('/status', methods=['GET'])
 @circuit_breaker
 def application_status():
     try:
+        ingredient_microservice_url = ingredient_load_balancer.get_next_service()
+        recipe_microservice_url = recipe_load_balancer.get_next_service()
 
-        ingredient_response1 = requests.get(f"{INGREDIENT_MICROSERVICE_URL1}/status")
-        ingredient_response2 = requests.get(f"{INGREDIENT_MICROSERVICE_URL2}/status")
-        recipe_response = requests.get(f"{RECIPE_MICROSERVICE_URL}/status")
+        logger.info(f"Request sent to Ingredient Microservice with URL:{ingredient_microservice_url}")
+        logger.info(f"Request sent to Recipe Microservice with URL:{recipe_microservice_url}")
 
-        ingredient_status1 = "Online" if ingredient_response1.status_code == 200 else "Offline"
-        ingredient_status2 = "Online" if ingredient_response2.status_code == 200 else "Offline"
+        ingredient_response=requests.get(f"{ingredient_microservice_url}/status")
+        recipe_response = requests.get(f"{recipe_microservice_url}/status")
+
+        ingredient_status = "Online" if ingredient_response.status_code == 200 else "Offline"
         recipe_status = "Online" if recipe_response.status_code == 200 else "Offline"
 
         status_info = {
-        "Ingredient Microservice 1 Status": ingredient_status1,
-        "Ingredient Microservice 2 Status": ingredient_status2,
+        "Ingredient Microservice Status": ingredient_status,
         "Recipe Microservice Status": recipe_status
         }
         return jsonify(status_info)
+    except NoHealthyServiceError:
+        if circuit_breaker.should_trip(NoHealthyServiceError):
+            circuit_breaker.trip()
+        raise
     except Exception as e:
-
         if circuit_breaker.should_trip(e):
             circuit_breaker.trip()
         # raise e
@@ -171,7 +169,9 @@ def application_status():
 @circuit_breaker
 def get_ingredients():
     try:
-        url = f"{INGREDIENT_MICROSERVICE_URL}/ingredients"
+        ingredient_microservice_url = ingredient_load_balancer.get_next_service()
+        url = f"{ingredient_microservice_url}/ingredients"
+
         response = requests.get(url)
 
         if response.status_code == 200:
@@ -189,7 +189,9 @@ def get_ingredients():
 @circuit_breaker
 def add_ingredient():
     try:
-        url = f"{INGREDIENT_MICROSERVICE_URL}/addIngredient"
+        ingredient_microservice_url = ingredient_load_balancer.get_next_service()
+        url = f"{ingredient_microservice_url}/addIngredient"
+
         request_data = request.get_json()
         ingredient_name = request_data.get("ingredient")
 
@@ -209,9 +211,10 @@ def add_ingredient():
 @circuit_breaker
 def add_ingredients():
     try:
-        url = f"{INGREDIENT_MICROSERVICE_URL}/addIngredients"
-        request_data = request.get_json()
+        ingredient_microservice_url = ingredient_load_balancer.get_next_service()
+        url = f"{ingredient_microservice_url}/addIngredients"
 
+        request_data = request.get_json()
         response = requests.post(url, json=request_data)
 
         if response.status_code == 200:
@@ -234,7 +237,9 @@ def get_ingredeint_by_id(id):
             print(f"Data taken from cache: {cached_data}")
             return jsonify(cached_data)
         else:
-            url = f"{INGREDIENT_MICROSERVICE_URL}/ingredient/{id}"
+            recipe_microservice_url = recipe_load_balancer.get_next_service()
+            url = f"{recipe_microservice_url}/ingredient/{id}"
+
             response = requests.get(url)
 
             if response.status_code == 200:
@@ -253,7 +258,9 @@ def get_ingredeint_by_id(id):
 @circuit_breaker
 def get_recipes():
     try:
-        url = f"{RECIPE_MICROSERVICE_URL}/recipes"
+        recipe_microservice_url = recipe_load_balancer.get_next_service()
+        url = f"{recipe_microservice_url}/recipes"
+
         response = requests.get(url)
 
         if response.status_code == 200:
@@ -278,7 +285,8 @@ def get_recipe_by_ingredient(ingredient):
             print(f"Data taken from cache: {cached_data}")
             return jsonify(cached_data)
         else:
-            url = f"{RECIPE_MICROSERVICE_URL}/recipes/{ingredient}"
+            recipe_microservice_url = recipe_load_balancer.get_next_service()
+            url = f"{recipe_microservice_url}/recipes/{ingredient}"
             response = requests.get(url)
 
             if response.status_code == 200:
@@ -297,7 +305,9 @@ def get_recipe_by_ingredient(ingredient):
 @circuit_breaker
 def add_recipe():
     try:
-        url = f"{RECIPE_MICROSERVICE_URL}/addRecipe"
+        recipe_microservice_url = recipe_load_balancer.get_next_service()
+        url = f"{recipe_microservice_url}/addRecipe"
+
         request_data = request.get_json()
         response = requests.post(url, json=request_data)
         print(f'Added recipe. Response:{response.json()}, Status code: {response.status_code}')
